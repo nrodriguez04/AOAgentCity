@@ -1,0 +1,22 @@
+{
+  "name": "@agent-city/agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "gen:seed": "tsx scripts/gen-seed.ts"
+  },
+  "dependencies": {
+    "@agent-city/core": "workspace:*",
+    "@agent-city/db": "workspace:*",
+    "@agent-city/tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

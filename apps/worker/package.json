@@ -1,0 +1,27 @@
+{
+  "name": "@agent-city/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "emit:test": "tsx --env-file-if-exists=../../.env scripts/emit-test-event.ts",
+    "agents:sync": "tsx --env-file-if-exists=../../.env scripts/sync-agents.ts",
+    "agent:run": "tsx --env-file-if-exists=../../.env scripts/run-agent.ts",
+    "approval:execute": "tsx --env-file-if-exists=../../.env scripts/execute-approval.ts"
+  },
+  "dependencies": {
+    "@agent-city/agents": "workspace:*",
+    "@agent-city/core": "workspace:*",
+    "@agent-city/db": "workspace:*",
+    "@agent-city/runtime": "workspace:*",
+    "@agent-city/tools": "workspace:*",
+    "@trigger.dev/sdk": "^4.7.3"
+  },
+  "devDependencies": {
+    "trigger.dev": "^4.7.3"
+  }
+}
