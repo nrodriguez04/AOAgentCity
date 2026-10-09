@@ -45,6 +45,14 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* Unlayered like the tokens above: a layered override would never apply. */
+@media (max-width: 760px) {
+  :root {
+    --gutter: 10px;
+    --bar-height: 52px;
+  }
+}
+
 /* ------------------------------------------------------------------- reset */
 
 @layer reset {
@@ -192,13 +200,9 @@
   }
 
   @media (max-width: 760px) {
-    :root {
-      --gutter: 8px;
-      --bar-height: 52px;
-    }
-
     .top-bar {
       inset-inline: var(--gutter);
+      gap: 8px;
     }
 
     .side-panel {
@@ -213,6 +217,11 @@
     }
 
     .clock {
+      display: none;
+    }
+
+    /* With the sheet open the city only has a strip of screen; the DEMO chip is enough. */
+    .city-shell:has(.side-panel) .demo-note {
       display: none;
     }
   }
@@ -420,6 +429,27 @@
     min-block-size: 28px;
     padding: 4px 10px;
     font-size: 12px;
+  }
+
+  @media (max-width: 760px) {
+    .controls {
+      gap: 4px;
+      padding: 5px;
+    }
+
+    .controls .btn {
+      padding-inline: 10px;
+    }
+
+    /* Words dropped from button labels on phones, still read by screen readers. */
+    .wide-only {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
 
   .icon-btn {

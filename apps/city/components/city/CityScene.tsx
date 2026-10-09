@@ -241,7 +241,7 @@ export default function CityScene(props: CitySceneProps & { debug?: CitySceneDeb
               labelFor={labelFor}
             />
           )}
-          <LabelProjector anchors={anchors} registry={labels} />
+          <LabelProjector anchors={anchors} registry={labels} insets={props.viewInsets} />
           <CameraRig
             apiRef={cameraApi}
             focus={focusTarget}

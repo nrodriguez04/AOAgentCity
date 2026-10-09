@@ -315,10 +315,14 @@ function loop() {
     const candidates = ["parlaylab.billing-01", "parlaylab.support-01", "parlaylab.growth-01"];
     simulateRun(pick(candidates));
     if (Math.random() < 0.25) {
+      const followers = useCity.getState().divisions.find((d) => d.id === "creatoros")?.metrics.followers;
+      const gain = Math.round(20 + Math.random() * 90);
+      const value = (followers?.value ?? 48_200) + gain;
+      const today = (followers?.delta ?? 310) + gain;
       bumpMetrics(
         "creatoros",
-        (m) => ({ followers: { value: (m.followers?.value ?? 48_200) + Math.round(20 + Math.random() * 90), unit: "count", delta: 310 } }),
-        "Followers ticking up",
+        () => ({ followers: { value, unit: "count", delta: today } }),
+        `Followers ${value.toLocaleString("en-US")} (+${today} today)`,
         null,
       );
     }

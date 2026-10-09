@@ -49,17 +49,18 @@ export function TopBar({ now, onSignOut }: { now: number; onSignOut?: () => void
 
       <div className="controls glass" role="group" aria-label="City controls">
         <button type="button" className="btn btn-pause" aria-pressed={paused} disabled={busy} onClick={togglePause}>
-          {paused ? "Resume city" : "Pause city"}
+          {paused ? "Resume" : "Pause"}
+          <span className="wide-only"> city</span>
         </button>
         <button type="button" className="btn btn-ghost" aria-pressed={lowGraphics} onClick={() => setLowGraphics(!lowGraphics)}>
           Low graphics
         </button>
         <button type="button" className="btn btn-ghost" onClick={resetCamera}>
-          Reset camera
+          Reset<span className="wide-only"> camera</span>
         </button>
         {!panelOpen ? (
           <button type="button" className="btn btn-ghost" onClick={() => setPanelOpen(true)}>
-            Show panel
+            <span className="wide-only">Show </span>Panel
           </button>
         ) : null}
         {onSignOut ? (
