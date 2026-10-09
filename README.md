@@ -124,7 +124,7 @@ Deploy `apps/city` to Vercel (root directory `apps/city`, install with pnpm from
 - **Retries** happen per Claude API call (SDK backoff on 408/409/429/5xx), not by re-running whole tasks, so tool calls are never repeated.
 - **Window lighting**: each agent lights its own band of floors (floor by floor) rather than a single floor, so a three-agent tower is fully lit when all three work.
 - **Refusal fallbacks** (`fallbacks: "default"`) are on for the Opus and Sonnet tiers; Haiku has no server-side fallback. Disable with `MODEL_FALLBACKS=off`.
-- **Hero towers** are modelled in Blender by a script (`assets/blender/`) and shipped as GLB; the filler city is procedural and instanced.
+- **Hero towers** are modelled in Blender by a script (`assets/blender/`) and shipped as GLB; the filler city is procedural and instanced. They use Meshopt rather than Draco (the spec allows either) and have no textures, so there is nothing to encode as KTX2: windows, screens and the LED band come from shaders. All nine towers come to about 0.8 MB against the 25 MB budget. Baked AO was tried and dropped because it blacked out surfaces behind fins and posts (details in `assets/blender/README.md`); the city's AO pass covers contact shading.
 
 ## Open decisions (§1)
 
