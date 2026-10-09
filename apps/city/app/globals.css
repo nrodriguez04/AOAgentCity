@@ -117,9 +117,17 @@
     inset: 0;
   }
 
+  /* Contain the scene's HTML labels (drei uses very large z-indexes) so the
+     glass UI always sits above them. */
   .scene-layer {
     position: absolute;
     inset: 0;
+    z-index: 0;
+    isolation: isolate;
+  }
+
+  :is(.top-bar, .side-panel, .division-bar) {
+    z-index: 1;
   }
 
   .scene-loading {
@@ -177,7 +185,10 @@
   .division-bar ul {
     display: flex;
     gap: 6px;
+    margin-block: 0;
     margin-inline: auto;
+    padding: 0;
+    list-style: none;
   }
 
   @media (max-width: 760px) {
@@ -530,6 +541,14 @@
   .status-pill[data-status="paused"] {
     border-color: color-mix(in oklab, var(--accent-approval) 60%, transparent);
     color: var(--accent-approval);
+  }
+
+  .brief-button {
+    inline-size: 100%;
+    margin-block-start: 12px;
+    border-color: color-mix(in oklab, var(--accent-approval) 45%, transparent);
+    background: color-mix(in oklab, var(--accent-approval) 10%, transparent);
+    text-align: start;
   }
 
   .alert {

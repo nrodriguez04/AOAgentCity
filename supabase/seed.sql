@@ -6,7 +6,7 @@
 insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('hq', 'HQ', 'hq', 'planning', 'Orchestrator: daily brief, priorities and routing across every division.', $md$# HQ
 HQ reasons across every division and decides what matters today.
 - Owner: Nico. Agents serve Nico; they never act on his behalf outside the approval queue.
-- Live business today: ParlayLab. Everything else is planned or concept.$md$, '{"x":0,"z":66.5,"buildingModel":"deco-spire"}'::jsonb)
+- Live business today: ParlayLab. Everything else is planned or concept.$md$, '{"x":2,"z":66.5,"buildingModel":"deco-spire"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
 insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('parlaylab', 'ParlayLab', 'business', 'live', 'Live business. Stripe subscription tiers configured.', $md$# ParlayLab
 Subscription product billed through Stripe (tiers are configured as Stripe prices).
@@ -34,7 +34,7 @@ insert into divisions (id, name, kind, status, summary, context_md, city_slot) v
 Planned. Private, read-only sources; summaries only.$md$, '{"x":0,"z":-76,"buildingModel":"glass-pavilion"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
 insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('creatoros', 'CreatorOS', 'creator', 'live', 'Social and content POC. Agents arrive in phase 2.', $md$# CreatorOS
-Live POC. Content calendar, drafts and metrics agents arrive in phase 2; posting will require approval.$md$, '{"x":-22,"z":-45.5,"buildingModel":"billboard-block"}'::jsonb)
+Live POC. Content calendar, drafts and metrics agents arrive in phase 2; posting will require approval.$md$, '{"x":-27.5,"z":-45.5,"buildingModel":"billboard-block"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
 
 -- Agents (spec §6.3)

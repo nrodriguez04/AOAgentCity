@@ -27,7 +27,8 @@ export interface DivisionDefinition {
 }
 
 // City coordinates: +x is east, +z is south. The grid lives in apps/city
-// (lib/city-layout.ts); slots sit on block centres of that grid.
+// (lib/scene/layout.ts); slots sit inside blocks of that grid, clear of the
+// avenues, streets and Broadway (which runs down x = -5.5 south of z = 38).
 export const DIVISIONS: DivisionDefinition[] = [
   {
     id: "hq",
@@ -41,7 +42,7 @@ export const DIVISIONS: DivisionDefinition[] = [
       "- Owner: Nico. Agents serve Nico; they never act on his behalf outside the approval queue.",
       "- Live business today: ParlayLab. Everything else is planned or concept.",
     ].join("\n"),
-    slot: { x: 0, z: 66.5, buildingModel: "deco-spire" },
+    slot: { x: 2, z: 66.5, buildingModel: "deco-spire" },
   },
   {
     id: "parlaylab",
@@ -123,7 +124,7 @@ export const DIVISIONS: DivisionDefinition[] = [
     status: "live",
     summary: "Social and content POC. Agents arrive in phase 2.",
     contextMd: "# CreatorOS\nLive POC. Content calendar, drafts and metrics agents arrive in phase 2; posting will require approval.",
-    slot: { x: -22, z: -45.5, buildingModel: "billboard-block" },
+    slot: { x: -27.5, z: -45.5, buildingModel: "billboard-block" },
   },
 ];
 

@@ -38,6 +38,8 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
   const allEvents = useCity((s) => s.events);
   const tasks = useCity(useShallow((s) => s.tasks.filter((t) => t.division_id === division.id && ["open", "in_progress", "blocked"].includes(t.status))));
   const acknowledge = useCity((s) => s.acknowledge);
+  const brief = useCity((s) => (division.id === "hq" ? s.brief : null));
+  const setPanelTab = useCity((s) => s.setPanelTab);
 
   // HQ sees across the whole city; every other division sees its own feed.
   const events: EventRow[] = (division.id === "hq" ? allEvents : allEvents.filter((e) => e.division_id === division.id)).slice(0, 40);
@@ -52,6 +54,12 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
         <StatusPill status={division.status} />
       </header>
       {division.summary ? <p className="division-summary">{division.summary}</p> : null}
+
+      {brief ? (
+        <button type="button" className="btn brief-button" onClick={() => setPanelTab("brief")}>
+          Open today&apos;s brief <span className="muted small">({relativeTime(brief.created_at, now)})</span>
+        </button>
+      ) : null}
 
       {building?.crown === "error" ? (
         <div className="alert alert-error">

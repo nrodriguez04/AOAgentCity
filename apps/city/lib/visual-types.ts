@@ -62,12 +62,30 @@ export interface CityAmbience {
   lowGraphics: boolean;
 }
 
+/** CSS pixels of the canvas covered by UI (glass panel, division bar, top bar). */
+export interface ViewInsets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
 export interface CitySceneProps {
   buildings: BuildingVisuals[];
   ambience: CityAmbience;
   /** When set (or changed), the camera flies to this division's tower. */
   focusDivisionId: string | null;
+  /**
+   * Increments on every focus request, so selecting the same division again
+   * flies back to it even though focusDivisionId did not change.
+   */
+  focusToken?: number;
   /** Increment to fly the camera back to the overview. */
   cameraResetToken: number;
+  /**
+   * The overview and fly-to targets should be framed in the unobstructed part
+   * of the canvas (the canvas itself stays full-screen behind the glass UI).
+   */
+  viewInsets?: ViewInsets;
   onSelectDivision(divisionId: string): void;
 }

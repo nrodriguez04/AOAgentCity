@@ -273,7 +273,9 @@ function simulateRun(agentId: string) {
       );
     }
     let queued = false;
-    if ((agentId === "parlaylab.billing-01" || agentId === "parlaylab.support-01") && Math.random() < 0.35) {
+    // Keep the demo queue realistic: new requests only while fewer than four wait on you.
+    const waitingCount = useCity.getState().approvals.filter((a) => a.status === "pending").length;
+    if ((agentId === "parlaylab.billing-01" || agentId === "parlaylab.support-01") && waitingCount < 4 && Math.random() < 0.35) {
       const who = pick(["alex", "riley", "casey", "morgan", "jamie"]);
       const approval = makeApproval({
         agent: agentId,

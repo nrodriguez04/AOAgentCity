@@ -330,7 +330,7 @@ describe("sweep", () => {
     const ok = (async () => new Response(JSON.stringify({ id: "em_9" }), { status: 200 })) as unknown as typeof fetch;
     const report = await sweep({ repo: t.repo, services: { fetch: ok }, now: () => new Date(Date.now() + 60_000) });
 
-    expect(report).toEqual({ expired: 1, executed: { [approved.approval.id]: "executed" }, staleRunsFailed: 1 });
+    expect(report).toEqual({ expired: 1, executed: { [approved.approval.id]: "executed" }, stuckReported: 0, staleRunsFailed: 1 });
     expect((await t.repo.getApproval(expiring.approval.id))?.status).toBe("expired");
     expect((await t.repo.getRun(lost.id))?.status).toBe("failed");
   });
@@ -345,5 +345,32 @@ describe("request builder", () => {
     expect(fast.fallbacks).toBeUndefined();
     expect(fast.cache_control).toEqual({ type: "ephemeral" });
     expect(fast.tools).toBeUndefined();
+  });
+});
+
+describe("stuck executions", () => {
+  it("reports an action whose executor died, once, and never retries it", async () => {
+    const { approval } = await t.repo.createApproval({
+      division_id: "parlaylab", agent_id: "parlaylab.billing-01", run_id: null, tier: "financial",
+      title: "Refund $19.00 to sam@example.com", rationale: "r",
+      action: { tool: "stripe.issue_refund", args: { payment_intent: "pi_1", amount_cents: 1900, currency: "usd" } },
+      action_hash: "stuck",
+    });
+    await t.sql.query(`update approvals set status = 'approved' where id = $1`, [approval.id]);
+    await t.repo.transitionApproval(approval.id, ["approved"], "executing");
+    const later = () => new Date(Date.now() + 30 * 60_000);
+
+    expect((await sweep({ repo: t.repo, now: later })).stuckReported).toBe(1);
+    expect((await sweep({ repo: t.repo, now: later })).stuckReported).toBe(0);
+    expect((await t.repo.getApproval(approval.id))?.status).toBe("executing");
+    const [alert] = await t.repo.listEvents({ types: ["action.executed"] });
+    expect(alert).toMatchObject({ level: "error", summary: "Outcome unknown, check before retrying: Refund $19.00 to sam@example.com" });
+
+    // While it is unresolved, the same action cannot be queued again.
+    const again = await t.repo.createApproval({
+      division_id: "parlaylab", agent_id: "parlaylab.billing-01", run_id: null, tier: "financial",
+      title: "Refund again", rationale: "r", action: { tool: "stripe.issue_refund", args: {} }, action_hash: "stuck",
+    });
+    expect(again).toMatchObject({ created: false });
   });
 });

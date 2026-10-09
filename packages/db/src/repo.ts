@@ -640,6 +640,26 @@ export class Repo {
     return rows.map(mapApproval);
   }
 
+  /**
+   * Approvals claimed for execution long ago that never finished (the executor
+   * died mid-action) and have not been reported yet.
+   */
+  async listStuckExecuting(claimedBefore: Date): Promise<ApprovalRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `select a.* from approvals a
+        where a.status = 'executing'
+          and coalesce(a.decided_at, a.created_at) <= $1::timestamptz
+          and not exists (
+            select 1 from events e
+             where e.type = 'action.executed'
+               and e.payload ->> 'approval_id' = a.id::text
+               and e.payload ->> 'outcome' = 'unknown'
+          )`,
+      [claimedBefore],
+    );
+    return rows.map(mapApproval);
+  }
+
   // ------------------------------------------------------------------- tasks
 
   async createTask(input: NewTask): Promise<TaskRow> {

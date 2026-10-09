@@ -7,7 +7,8 @@ export function relativeTime(iso: string | null | undefined, now: number = Date.
   if (!iso) return "never";
   const diff = new Date(iso).getTime() - now;
   const abs = Math.abs(diff);
-  if (abs < 45_000) return diff <= 0 ? "just now" : "in a moment";
+  // Small skews between the writer's clock and this one read as "just now" either way.
+  if (abs < 45_000) return "just now";
   if (abs < 3_600_000) return rtf.format(Math.round(diff / 60_000), "minute");
   if (abs < 86_400_000) return rtf.format(Math.round(diff / 3_600_000), "hour");
   return rtf.format(Math.round(diff / 86_400_000), "day");

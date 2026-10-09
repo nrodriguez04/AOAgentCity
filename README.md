@@ -98,7 +98,7 @@ Deploy `apps/city` to Vercel (root directory `apps/city`, install with pnpm from
 2. The run finishes as `waiting_approval` without blocking; the tower's beacon flashes.
 3. Nico approves in the panel. RLS allows only `status` and `decided_note` on a pending, unexpired approval. A trigger stamps `decided_at`, emits `approval.decided`, frees the agent, and calls Trigger.dev through pg_net with idempotency key = approval id.
 4. `execute-approval` re-checks the agent, its grant and the arguments, then claims the approval (`approved -> executing`, a single conditional update), runs the stored action with the approval id as the integration's idempotency key, records the result and emits `action.executed`. The model is never re-invoked.
-5. Approvals expire after 72 hours. The sweeper (every 5 minutes) expires them, executes anything the webhook missed, and fails runs whose worker died.
+5. Approvals expire after 72 hours. The sweeper (every 5 minutes) expires them, executes anything the webhook missed, and fails runs whose worker died. If a worker dies in the middle of an action, the approval stays `executing` (never retried, and the same action can't be queued again) and the city raises one red "outcome unknown" alert so you can check the integration.
 
 ## Safety (security checklist, §13)
 
