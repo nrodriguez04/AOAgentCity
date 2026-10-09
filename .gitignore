@@ -16,3 +16,8 @@ coverage/
 
 # Local screenshots and scratch output
 screenshots/
+
+# Blender / Python
+__pycache__/
+*.pyc
+*.blend1
