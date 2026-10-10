@@ -1,4 +1,4 @@
--- supabase/migrations/0002_security.sql
+-- supabase/migrations/20261010010900_security.sql
 --
 -- Row-level security (spec §5.3).
 --   * The city authenticates as Nico through Supabase Auth. Only users listed in
@@ -19,7 +19,8 @@ create function public.is_owner() returns boolean
 language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.owners o where o.user_id = (select auth.uid()));
 $$;
-revoke all on function public.is_owner() from public;
+-- Supabase grants new functions to anon explicitly, so revoking from public is not enough.
+revoke all on function public.is_owner() from public, anon;
 grant execute on function public.is_owner() to authenticated;
 
 alter table divisions         enable row level security;
@@ -63,7 +64,7 @@ create policy owner_read on tool_calls        for select to authenticated using 
 create policy owner_read on email_drafts      for select to authenticated using ((select public.is_owner()));
 
 -- Decide a pending, unexpired approval. decided_at is stamped by a trigger
--- (0003) rather than trusted from the browser.
+-- (approval_decisions migration) rather than trusted from the browser.
 create policy owner_decides_pending on approvals for update to authenticated
   using ((select public.is_owner()) and status = 'pending' and expires_at > now())
   with check ((select public.is_owner()) and status in ('approved', 'rejected'));

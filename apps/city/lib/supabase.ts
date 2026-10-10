@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // The browser only ever holds the anon key and Nico's session. RLS limits it to
-// reading the city and deciding approvals (supabase/migrations/0002_security.sql).
+// reading the city and deciding approvals (supabase/migrations/*_security.sql and *_owner_check_invoker.sql).
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

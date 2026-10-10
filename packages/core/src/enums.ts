@@ -1,4 +1,4 @@
-// Enum values shared by the database (supabase/migrations/0001_init.sql),
+// Enum values shared by the database (supabase/migrations/*_init.sql),
 // the worker, and the city. Keep these lists in the same order as the SQL enums.
 
 export const DIVISION_KINDS = ["hq", "business", "personal", "creator"] as const;

@@ -3,7 +3,7 @@ import { EVENT_LEVELS } from "./enums";
 
 // Event contract (spec §5.2). Every agent check-in goes through this schema and
 // the city derives every visual effect from these events. The database enforces
-// the same type list and summary length (0001_init.sql), so a row that bypasses
+// the same type list and summary length (the init migration), so a row that bypasses
 // emit() still cannot break the contract.
 
 export const EVENT_TYPES = [

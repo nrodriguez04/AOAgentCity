@@ -1,4 +1,4 @@
--- supabase/migrations/0003_approval_decisions.sql
+-- supabase/migrations/20261010011001_approval_decisions.sql
 --
 -- What happens when Nico approves or rejects in the city (spec §7.3):
 --   1. decided_at is stamped server-side.
@@ -7,12 +7,12 @@
 --   3. The agent leaves waiting_approval once nothing else is pending.
 --   4. On approve, the execute-approval Trigger.dev task is triggered through
 --      pg_net with idempotency key = approval id. If pg_net or the secret is not
---      configured, the sweep-approvals task (every minute) picks it up instead.
+--      configured, the sweep-approvals task (every 5 minutes) picks it up instead.
 
 do $$
 begin
   if exists (select 1 from pg_available_extensions where name = 'pg_net') then
-    create extension if not exists pg_net;
+    create extension if not exists pg_net with schema extensions; -- its functions live in schema net
   end if;
 end $$;
 
@@ -102,6 +102,8 @@ begin
   end if;
   return new;
 end $$;
+
+revoke all on function public.on_approval_decided() from public, anon, authenticated; -- only fires as a trigger
 
 create trigger approvals_decided
   after update of status on approvals

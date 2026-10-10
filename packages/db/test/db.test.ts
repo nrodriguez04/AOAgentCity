@@ -132,7 +132,13 @@ describe("row-level security", () => {
     const strangerRows = await t.asUser(STRANGER, (sql) => sql.query(`select * from events`));
     expect(ownerRows).toHaveLength(1);
     expect(strangerRows).toHaveLength(0);
-    await expect(t.asUser(OWNER, (sql) => sql.query(`select * from owners`))).rejects.toThrow();
+
+    // Each user can see only their own owners row, and nobody can add one from the browser.
+    expect(await t.asUser(OWNER, (sql) => sql.query(`select user_id from owners`))).toEqual([{ user_id: OWNER }]);
+    expect(await t.asUser(STRANGER, (sql) => sql.query(`select user_id from owners`))).toEqual([]);
+    await expect(
+      t.asUser(STRANGER, (sql) => sql.query(`insert into owners (user_id) values ($1)`, [STRANGER])),
+    ).rejects.toThrow(/permission denied/);
   });
 
   it("lets the owner decide a pending approval and nothing else", async () => {

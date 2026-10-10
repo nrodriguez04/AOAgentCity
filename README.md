@@ -43,7 +43,8 @@ packages/
   runtime/         Agent run loop (§6.2), budgets, kill switch, approval execution (§7.3), sweeper
   agents/          defineAgent() + instructions.md for HQ-01, BILLING-01, SUPPORT-01, GROWTH-01
 supabase/
-  migrations/      0001 schema, 0002 RLS + Vault access, 0003 approval-decision triggers
+  migrations/      init (schema), security (RLS + Vault access), approval_decisions (triggers),
+                   owner_check_invoker. File names carry the version Supabase records.
   seed.sql         GENERATED from packages/agents + packages/core (`pnpm gen:seed`)
 assets/blender/    Hero tower source: a Blender Python script that builds and exports every tower
 ```
@@ -52,7 +53,7 @@ assets/blender/    Hero tower source: a Blender Python script that builds and ex
 
 ### 1. Supabase
 
-1. Create a project. Apply the migrations in order (`supabase link` then `supabase db push`, or paste `0001`, `0002`, `0003` into the SQL editor), then run `supabase/seed.sql`.
+1. Create a project. Apply the migrations in order (`supabase link` then `supabase db push`, or paste the files in `supabase/migrations` into the SQL editor in name order), then run `supabase/seed.sql`. Migration file names match the versions in Supabase's migration history, so `supabase db push` only ever applies new files.
 2. **Auth**: turn off public sign-ups, invite your own email (Authentication -> Users), sign in once, then make yourself the owner:
    ```sql
    insert into owners (user_id, note) values ('<your auth user id>', 'nico');
@@ -69,7 +70,7 @@ assets/blender/    Hero tower source: a Blender Python script that builds and ex
    select vault.create_secret('tr_prod_...', 'trigger_secret_key');  -- lets approvals execute instantly
    ```
    Stripe restricted keys: BILLING-01 needs read on subscriptions, invoices, customers, charges and write on refunds; GROWTH-01 read on subscriptions, prices, products, customers; SUPPORT-01 read on customers, subscriptions, charges.
-4. **pg_net** (Database -> Extensions) powers instant approval dispatch. Migration 0003 enables it when available; without it, the sweeper executes approved actions within 5 minutes.
+4. **pg_net** (Database -> Extensions) powers instant approval dispatch. The approval_decisions migration enables it (in the `extensions` schema) when available; without it, the sweeper executes approved actions within 5 minutes.
 
 ### 2. Trigger.dev
 
@@ -105,7 +106,7 @@ Deploy `apps/city` to Vercel (root directory `apps/city`, install with pnpm from
 | Requirement | Where |
 |---|---|
 | Service credentials never reach the browser | The city uses the anon key + Nico's session only; the worker uses `DATABASE_URL` server-side |
-| RLS on every table; browser can only decide approvals | `0002_security.sql` (column grants: `approvals.status, decided_note`, `settings.agents_paused`) |
+| RLS on every table; browser can only decide approvals | `*_security.sql` (column grants: `approvals.status, decided_note`, `settings.agents_paused`); a user can read only their own `owners` row (`*_owner_check_invoker.sql`) |
 | Every tool registered with a tier | `packages/tools/src/registry.ts` (unknown tools are rejected and logged) |
 | External and financial tools always need approval, no bypass | `requiresApproval()` in the gateway; no flag exists |
 | No money movement for Finances | Finances has no agents or tools; refunds are the only money-moving tool and are `financial` |

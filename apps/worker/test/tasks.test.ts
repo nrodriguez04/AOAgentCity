@@ -6,7 +6,7 @@ import { sweepApprovals } from "../src/tasks/sweep";
 
 describe("worker tasks", () => {
   it("registers the tasks the database and HQ trigger by id", () => {
-    // pg_net in 0003_approval_decisions.sql posts to /api/v1/tasks/execute-approval/trigger.
+    // pg_net in the approval_decisions migration posts to /api/v1/tasks/execute-approval/trigger.
     expect(executeApprovalTask.id).toBe("execute-approval");
     // hq.dispatch_run and the schedules enqueue "division-run".
     expect(divisionRun.id).toBe("division-run");

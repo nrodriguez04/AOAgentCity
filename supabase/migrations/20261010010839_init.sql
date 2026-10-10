@@ -1,4 +1,4 @@
--- supabase/migrations/0001_init.sql
+-- supabase/migrations/20261010010839_init.sql
 --
 -- Agent City schema (spec §5.1). Additions to the spec are marked "addition".
 
