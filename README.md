@@ -1,6 +1,6 @@
 # Agent City
 
-A multi-agent operating system for running Nico's businesses and life, with a live 3D "mini Manhattan at dusk" as its interface. Agents do narrow jobs (billing, support, growth), HQ reasons across everything, every side effect waits in an approval queue, and the city renders exactly what the event store says: a tower lights up floor by floor when its agents work, its beacon flashes amber while something waits on you, and its crown turns red when a run fails.
+A multi-agent operating system for running Nico's businesses and life, with a live 3D "mini Manhattan at dusk" as its interface. Agents do narrow jobs (billing, support, growth), CrewAI crews write the weekly devlog, content plan and business review, HQ reasons across everything, every side effect waits in an approval queue, and the city renders exactly what the event store says: a tower lights up floor by floor when its agents work, its beacon flashes amber while something waits on you, and its crown turns red when a run fails.
 
 Built from `agent-city-build-spec.md` (v1.0). Section numbers below (§) refer to that spec.
 
@@ -13,6 +13,7 @@ EVENT STORE (Supabase Postgres)            supabase/migrations
         |  DATABASE_URL (server only)           ^ pg_net -> execute-approval
 HQ + DIVISION AGENTS (Trigger.dev tasks)   apps/worker, packages/runtime, packages/agents
   scheduled / dispatched runs, Claude tool-use loop, budgets, kill switch
+  crews: inputs from the gateway -> CrewAI AMP kickoff -> poll -> drafts + tasks   crews/
         |
 TOOL GATEWAY                               packages/tools
   registry with risk tiers, least-privilege grants, approval gate, scoped secrets, audit log
@@ -41,10 +42,13 @@ packages/
   db/              SQL repository, emit(), PGlite test harness that runs the real migrations
   tools/           Tool registry, gateway (§7.2), policy, Stripe / email / Gmail / internal / HQ tools
   runtime/         Agent run loop (§6.2), budgets, kill switch, approval execution (§7.3), sweeper
-  agents/          defineAgent() + instructions.md for HQ-01, BILLING-01, SUPPORT-01, GROWTH-01
+  agents/          defineAgent() + instructions.md for HQ-01, BILLING-01, SUPPORT-01, GROWTH-01;
+                   defineCrew() + spec.ts (inputs, task ids) for the three crews
+crews/             CrewAI projects deployed to CrewAI AMP: devlog/, content/, review/ (Python, uv)
 supabase/
   migrations/      init (schema), security (RLS + Vault access), approval_decisions (triggers),
-                   owner_check_invoker. File names carry the version Supabase records.
+                   owner_check_invoker, crews (runtime column + drafts). File names carry the
+                   version Supabase records.
   seed.sql         GENERATED from packages/agents + packages/core (`pnpm gen:seed`)
 assets/blender/    Hero tower source: a Blender Python script that builds and exports every tower
 ```
@@ -81,6 +85,30 @@ assets/blender/    Hero tower source: a Blender Python script that builds and ex
 ### 3. City
 
 Deploy `apps/city` to Vercel (root directory `apps/city`, install with pnpm from the repo root) with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Locally, put them in `apps/city/.env.local`.
+
+### 4. Crews (CrewAI AMP)
+
+Three crews run next to the Claude agents. Agent City gathers each crew's inputs through the tool gateway (with the crew's own grants), starts the crew on CrewAI AMP, follows its progress (the tower lights up and the panel shows which member is working), then validates the crew's JSON result and saves its drafts, tasks and metrics through the gateway. Crews hold no database credentials and have no tool with an external effect; their drafts appear under **Drafts** in the division panel.
+
+| Crew | Schedule (America/Chicago) | Members | Produces |
+|---|---|---|---|
+| `averageoutput.devlog-crew` | Fridays 3 PM | analyst, writer, editor | OTHERLIFE devlog from the week's AOWorld commits, 2-3 social posts, a review task. Skipped in weeks without commits |
+| `creatoros.content-crew` | Mondays 8 AM | strategist, writer, editor | The week's content plan and every post in it, from the CreatorOS strategy and what happened across the divisions |
+| `parlaylab.review-crew` | Mondays 7:15 AM | analyst, strategist | ParlayLab weekly review and up to three recommendation tasks. Skipped until ParlayLab has data |
+
+1. **Deploy each crew** on [CrewAI AMP](https://app.crewai.com): new deployment from this GitHub repository and branch, and under Advanced set the working directory to `crews/devlog`, `crews/content` or `crews/review`. Give it your Anthropic LLM connection (the crews use `anthropic/claude-sonnet-5-5`; override with the `CREW_MODEL` environment variable).
+2. **Store the connection** for each crew in Vault (the URL and bearer token AMP shows for the deployment):
+   ```sql
+   select vault.create_secret('{"url":"https://<deployment>.crewai.com","token":"..."}', 'agent:averageoutput.devlog-crew:crewai');
+   select vault.create_secret('{"url":"https://<deployment>.crewai.com","token":"..."}', 'agent:creatoros.content-crew:crewai');
+   select vault.create_secret('{"url":"https://<deployment>.crewai.com","token":"..."}', 'agent:parlaylab.review-crew:crewai');
+   select vault.create_secret('github_pat_...', 'agent:averageoutput.devlog-crew:github');  -- fine-grained, read-only Contents on AOWorld
+   ```
+   A crew without a connection is skipped with a warning in its activity feed, so the rest of the city keeps working.
+3. `pnpm agents:sync` registers the crew schedules with the others. Run one now with `pnpm agent:run averageoutput.devlog-crew`.
+4. **CreatorOS strategy**: the content crew follows the `## Strategy` section of the CreatorOS context (a starter version is seeded). Replace it with yours in `divisions.context_md`.
+
+Run a crew locally without Agent City: `cd crews/devlog && uv sync && ANTHROPIC_API_KEY=... uv run run_crew` (reads `inputs.example.json`). Each crew has offline tests (`uv run pytest`, no API key needed) that CI runs, and `packages/agents` tests check that the TypeScript inputs, the YAML placeholders and the result schema stay in step.
 
 ## Build plan checks (§12)
 
@@ -129,7 +157,7 @@ Deploy `apps/city` to Vercel (root directory `apps/city`, install with pnpm from
 
 ## Open decisions (§1)
 
-- **AverageOutput / OTHERLIFE**: modelled as one division (AverageOutput, with OTHERLIFE as its product). Splitting it is a new entry in `packages/core/src/divisions.ts` plus `pnpm gen:seed`.
+- **AverageOutput / OTHERLIFE**: modelled as one division (AverageOutput, with OTHERLIFE as its product), now `planning` because the devlog crew works there. Splitting it is a new entry in `packages/core/src/divisions.ts` plus `pnpm gen:seed`.
 - **ParlayLab's first jobs**: the spec's suggested defaults (BILLING-01, SUPPORT-01, GROWTH-01) are implemented. Change tools, schedules or instructions in `packages/agents/parlaylab/*`, then `pnpm gen:seed` and `pnpm agents:sync`.
 
 ## Development
@@ -139,4 +167,5 @@ pnpm typecheck
 pnpm test            # includes migrations + RLS + approval triggers on PGlite
 pnpm gen:seed        # after changing agents or divisions (a test fails if you forget)
 pnpm --filter @agent-city/city build
+(cd crews/devlog && uv sync && uv run pytest)   # likewise crews/content, crews/review
 ```
