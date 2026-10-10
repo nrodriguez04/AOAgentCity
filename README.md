@@ -79,8 +79,8 @@ assets/blender/    Hero tower source: a Blender Python script that builds and ex
 ### 2. Trigger.dev
 
 1. Create a project; set `TRIGGER_PROJECT_REF`. Add the worker variables from `.env.example` to the project's environment (`DATABASE_URL`, `ANTHROPIC_API_KEY`, `EMAIL_FROM`, the `ALERTS_*` settings and `CITY_URL`, optional `MODEL_*`, `EFFORT_*`, `AGENTS_PAUSED`).
-2. Deploy: `pnpm --filter @agent-city/worker deploy` (or `pnpm --filter @agent-city/worker dev` locally).
-3. Register agent schedules (America/Chicago) and sync definitions: `pnpm agents:sync`. HQ-01's 6:55 AM brief is scheduled in code (`hq-daily-brief`).
+2. Deploy: push to `main` and `.github/workflows/deploy-worker.yml` deploys the worker and runs `pnpm agents:sync` (repository secrets `TRIGGER_ACCESS_TOKEN`, `TRIGGER_PROJECT_REF`, `TRIGGER_SECRET_KEY`, `DATABASE_URL`; you can also run it from the Actions tab). By hand: `pnpm --filter @agent-city/worker run deploy` (`run` matters: plain `deploy` is a built-in pnpm command), or `pnpm --filter @agent-city/worker dev` locally.
+3. Register agent schedules (America/Chicago) and sync definitions: `pnpm agents:sync` (the deploy workflow does this). Then `pnpm preflight` lists anything still missing: worker variables, your owner account, each enabled agent's Vault credentials, alerts and instant approvals. It never prints a secret. HQ-01's 6:55 AM brief is scheduled in code (`hq-daily-brief`).
 4. **Owner alerts** (`owner-alerts`, every 5 minutes) email you each newly pending approval, each failed run and HQ's brief, so decisions reach your phone. Set `ALERTS_RESEND_API_KEY`, `ALERTS_EMAIL_TO`, `ALERTS_EMAIL_FROM` (a sender on a domain verified in Resend) and `CITY_URL`. Items are claimed before sending, a failed send is retried on the next run, only the last day is alerted on first deploy, and customer emails and phone numbers are masked. Every email is logged in `notifications` (without your address).
 
 ### 3. City

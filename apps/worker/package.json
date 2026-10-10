@@ -11,7 +11,8 @@
     "emit:test": "tsx --env-file-if-exists=../../.env scripts/emit-test-event.ts",
     "agents:sync": "tsx --env-file-if-exists=../../.env scripts/sync-agents.ts",
     "agent:run": "tsx --env-file-if-exists=../../.env scripts/run-agent.ts",
-    "approval:execute": "tsx --env-file-if-exists=../../.env scripts/execute-approval.ts"
+    "approval:execute": "tsx --env-file-if-exists=../../.env scripts/execute-approval.ts",
+    "preflight": "tsx --env-file-if-exists=../../.env scripts/preflight.ts"
   },
   "dependencies": {
     "@agent-city/agents": "workspace:*",

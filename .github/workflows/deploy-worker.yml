@@ -1,0 +1,77 @@
+name: Deploy worker
+
+# Deploys the Trigger.dev worker, then syncs agent definitions and schedules into
+# Supabase, on every push to main (or by hand from the Actions tab).
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions):
+#   TRIGGER_ACCESS_TOKEN  Trigger.dev personal access token (Account -> Tokens)
+#   TRIGGER_PROJECT_REF   proj_... (Trigger.dev project settings)
+#   TRIGGER_SECRET_KEY    tr_prod_... (the project's Production API key; registers schedules)
+#   DATABASE_URL          Supabase Transaction pooler connection string
+# The worker's own runtime variables (ANTHROPIC_API_KEY, ALERTS_*, ...) live in
+# Trigger.dev, not here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Never on forks: they have no secrets and must not deploy.
+    if: github.repository == 'nrodriguez04/AOAgentCity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Check the deploy secrets are set
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ secrets.TRIGGER_PROJECT_REF }}
+          TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          missing=""
+          for name in TRIGGER_ACCESS_TOKEN TRIGGER_PROJECT_REF TRIGGER_SECRET_KEY DATABASE_URL; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Add these repository secrets before deploying:$missing"
+            exit 1
+          fi
+
+      - name: Deploy to Trigger.dev
+        working-directory: apps/worker
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ secrets.TRIGGER_PROJECT_REF }}
+        run: pnpm exec trigger deploy --env prod
+
+      - name: Sync agents and schedules
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
+        run: pnpm agents:sync
+
+      - name: Preflight (what is still missing)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        # Informational: lists missing agent credentials and settings without failing the deploy.
+        # --ci skips the worker's own variables (ANTHROPIC_API_KEY, ALERTS_*), which live in Trigger.dev.
+        run: pnpm preflight --ci || true
