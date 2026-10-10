@@ -312,12 +312,12 @@ describe("sweep", () => {
     const now = new Date();
     const expiring = await t.repo.createApproval({
       division_id: "parlaylab", agent_id: "parlaylab.billing-01", run_id: null, tier: "external_effect",
-      title: "Old email", rationale: "r", action: { tool: "email.send", args: { to: "a@b.co", subject: "s", body_text: "b" } },
+      title: "Old email", rationale: "r", action: { tool: "email.send", args: { to: "a@example.com", subject: "s", body_text: "b" } },
       action_hash: "old", expires_at: new Date(now.getTime() - 1_000),
     });
     const approved = await t.repo.createApproval({
       division_id: "parlaylab", agent_id: "parlaylab.billing-01", run_id: null, tier: "external_effect",
-      title: "Approved email", rationale: "r", action: { tool: "email.send", args: { to: "c@d.co", subject: "s", body_text: "b" } },
+      title: "Approved email", rationale: "r", action: { tool: "email.send", args: { to: "c@example.com", subject: "s", body_text: "b" } },
       action_hash: "new",
     });
     // decided_at is stamped by the database trigger; the sweep's clock runs a minute ahead instead.

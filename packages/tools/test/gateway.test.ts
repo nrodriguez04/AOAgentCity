@@ -89,7 +89,7 @@ describe("gateway", () => {
 
   it("denies tools the agent was not granted, or granted below the tool's tier", async () => {
     expect(await invoke(billing, "brief.publish", { body_md: "x".repeat(60), headline: "hi" })).toMatchObject({ error: "permission_denied" });
-    expect(await invoke(billing, "email.draft", { to: "a@b.co", subject: "s", body_text: "b" })).toMatchObject({ error: "permission_denied" });
+    expect(await invoke(billing, "email.draft", { to: "a@example.com", subject: "s", body_text: "b" })).toMatchObject({ error: "permission_denied" });
     const warnings = await t.repo.listEvents({ types: ["run.progress"] });
     expect(warnings.map((e) => e.summary)).toEqual(["Denied: email.draft", "Denied: brief.publish"]);
     expect(warnings.every((e) => e.level === "warning")).toBe(true);
@@ -192,7 +192,7 @@ describe("integration helpers", () => {
   });
 
   it("builds RFC 2822 replies and reads Gmail bodies", () => {
-    const raw = buildRfc2822({ to: "a@b.co", subject: "Re: Remboursé ✓", body_text: "Line 1\nLine 2", in_reply_to: "<m1@x>" });
+    const raw = buildRfc2822({ to: "a@example.com", subject: "Re: Remboursé ✓", body_text: "Line 1\nLine 2", in_reply_to: "<m1@x>" });
     expect(raw).toContain("Subject: =?UTF-8?B?");
     expect(raw).toContain("In-Reply-To: <m1@x>");
     expect(raw).toContain("\r\n\r\nLine 1\r\nLine 2");

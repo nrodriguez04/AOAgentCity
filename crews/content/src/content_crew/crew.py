@@ -55,4 +55,6 @@ class ContentCrew:
 
     @crew
     def crew(self) -> Crew:
-        return Crew(agents=self.agents, tasks=self.tasks, process=Process.sequential, verbose=False)
+        # No memory or knowledge sources: the crew keeps no vector store, so CrewAI's
+        # chromadb dependency never runs (its open advisories concern Chroma servers).
+        return Crew(agents=self.agents, tasks=self.tasks, process=Process.sequential, memory=False, verbose=False)
