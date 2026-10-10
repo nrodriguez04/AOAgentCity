@@ -85,6 +85,23 @@ describe("seed", () => {
     }
   });
 
+  it("parks a disabled agent that was running, and wakes it again when re-enabled", async () => {
+    const t = await createTestDatabase({ seed: true });
+    try {
+      const parked = AGENTS.find((a) => !a.enabled);
+      expect(parked, "at least one agent is parked").toBeDefined();
+      // A database seeded before the agent was parked: enabled and idle.
+      await t.sql.query(`update agents set enabled = true, state = 'idle' where id = $1`, [parked!.id]);
+      await t.db.exec(readFileSync(`${SUPABASE_DIR}seed.sql`, "utf8"));
+      expect(await t.repo.getAgent(parked!.id)).toMatchObject({ enabled: false, state: "disabled" });
+
+      await t.db.exec(seedSql(AGENTS.map((a) => (a.id === parked!.id ? { ...a, enabled: true } : a))));
+      expect(await t.repo.getAgent(parked!.id)).toMatchObject({ enabled: true, state: "idle" });
+    } finally {
+      await t.close();
+    }
+  });
+
   it("matches what agents:sync writes", async () => {
     const seeded = await createTestDatabase({ seed: true });
     const synced = await createTestDatabase();

@@ -20,4 +20,7 @@ export default defineCrew({
     "metric.record", // internal_write
   ],
   dailyBudgetUsd: 2,
+  // Parked 2026-10-10: ParlayLab has no live billing, customers or support inbox yet.
+  // Re-enable (and run `pnpm gen:seed` + `pnpm agents:sync`) once billing is live.
+  enabled: false,
 });

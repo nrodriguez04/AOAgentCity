@@ -36,7 +36,7 @@ export function seedSql(agents: AgentDefinition[]): string {
   for (const a of agents) {
     out.push(
       `insert into agents (id, division_id, display_name, role, model_tier, runtime, instructions, default_goal, schedule_cron, daily_budget_usd, enabled, state) values (${literal(a.id)}, ${literal(a.division)}, ${literal(a.displayName)}, ${literal(a.role)}, ${literal(a.modelTier)}, ${literal(a.runtime)}, ${dollar(a.instructions)}, ${literal(a.defaultGoal)}, ${literal(a.schedule)}, ${a.dailyBudgetUsd}, ${a.enabled}, '${a.enabled ? "idle" : "disabled"}')`,
-      "  on conflict (id) do update set division_id = excluded.division_id, display_name = excluded.display_name, role = excluded.role, model_tier = excluded.model_tier, runtime = excluded.runtime, instructions = excluded.instructions, default_goal = excluded.default_goal, schedule_cron = excluded.schedule_cron, daily_budget_usd = excluded.daily_budget_usd, enabled = excluded.enabled;",
+      "  on conflict (id) do update set division_id = excluded.division_id, display_name = excluded.display_name, role = excluded.role, model_tier = excluded.model_tier, runtime = excluded.runtime, instructions = excluded.instructions, default_goal = excluded.default_goal, schedule_cron = excluded.schedule_cron, daily_budget_usd = excluded.daily_budget_usd, enabled = excluded.enabled, state = case when not excluded.enabled then 'disabled'::agent_state when agents.state = 'disabled' then 'idle'::agent_state else agents.state end;",
     );
   }
 

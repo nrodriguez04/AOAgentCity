@@ -21,4 +21,7 @@ export default defineAgent({
     "task.create", // internal_write
   ],
   dailyBudgetUsd: 1.5,
+  // Parked 2026-10-10: ParlayLab has no live billing, customers or support inbox yet.
+  // Re-enable (and run `pnpm gen:seed` + `pnpm agents:sync`) once billing is live.
+  enabled: false,
 });
