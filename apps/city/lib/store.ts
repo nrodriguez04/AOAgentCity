@@ -1,7 +1,8 @@
-import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
+import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
 import { create } from "zustand";
 
 export const EVENT_LIMIT = 200;
+export const DRAFT_LIMIT = 100;
 
 export type Connection = "connecting" | "live" | "reconnecting" | "offline" | "demo";
 export type PanelTab = "division" | "approvals" | "brief";
@@ -12,6 +13,8 @@ export interface Hydration {
   approvals: ApprovalRow[];
   events: EventRow[];
   tasks: TaskRow[];
+  /** Devlogs, posts, reports and plans written by agents and crews, newest first. */
+  drafts: DraftRow[];
   brief: BriefRow | null;
   settings: SettingsRow | null;
 }
@@ -36,6 +39,7 @@ export interface CityState extends Hydration {
   removeApproval(id: string): void;
   pushEvent(row: EventRow): void;
   upsertTask(row: TaskRow): void;
+  upsertDraft(row: DraftRow): void;
   setBrief(row: BriefRow): void;
   setSettings(row: SettingsRow): void;
   setConnection(connection: Connection): void;
@@ -68,6 +72,9 @@ function writeLocal(key: string, value: unknown): void {
   }
 }
 
+const newestFirst = (drafts: DraftRow[]) =>
+  [...drafts].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)).slice(0, DRAFT_LIMIT);
+
 function upsertBy<T extends { id: string | number }>(rows: T[], row: T): T[] {
   const index = rows.findIndex((r) => r.id === row.id);
   if (index === -1) return [...rows, row];
@@ -82,6 +89,7 @@ export const useCity = create<CityState>((set, get) => ({
   approvals: [],
   events: [],
   tasks: [],
+  drafts: [],
   brief: null,
   settings: null,
   connection: "connecting",
@@ -99,6 +107,7 @@ export const useCity = create<CityState>((set, get) => ({
     set({
       ...data,
       events: [...data.events].sort((a, b) => b.id - a.id).slice(0, EVENT_LIMIT),
+      drafts: newestFirst(data.drafts),
       hydrated: true,
       acks: readLocal(ACK_KEY, {}),
       lowGraphics: readLocal(LOW_KEY, false),
@@ -113,6 +122,7 @@ export const useCity = create<CityState>((set, get) => ({
       return { events: [row, ...s.events].sort((a, b) => b.id - a.id).slice(0, EVENT_LIMIT) };
     }),
   upsertTask: (row) => set((s) => ({ tasks: upsertBy(s.tasks, row) })),
+  upsertDraft: (row) => set((s) => ({ drafts: newestFirst(upsertBy(s.drafts, row)) })),
   setBrief: (row) => set((s) => (s.brief && s.brief.created_at > row.created_at ? s : { brief: row })),
   setSettings: (row) => set({ settings: row }),
   setConnection: (connection) => set({ connection }),

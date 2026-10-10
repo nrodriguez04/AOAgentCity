@@ -1,0 +1,27 @@
+[project]
+name = "devlog_crew"
+version = "0.1.0"
+description = "Agent City DEVLOG CREW: a weekly OTHERLIFE devlog from the AOWorld commits"
+authors = [{ name = "Average Output Studios" }]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[anthropic]>=1.15.27,<2",
+]
+
+[project.scripts]
+devlog_crew = "devlog_crew.main:run"
+run_crew = "devlog_crew.main:run"
+train = "devlog_crew.main:train"
+replay = "devlog_crew.main:replay"
+test = "devlog_crew.main:test"
+run_with_trigger = "devlog_crew.main:run_with_trigger"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

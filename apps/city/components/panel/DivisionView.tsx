@@ -7,6 +7,7 @@ import { useCity } from "@/lib/store";
 import type { BuildingVisuals } from "@/lib/visual-types";
 import { ActivityFeed } from "./ActivityFeed";
 import { ApprovalCard } from "./ApprovalCard";
+import { DraftList } from "./DraftList";
 
 const STATE_LABEL: Record<AgentRow["state"], string> = {
   idle: "Idle",
@@ -40,9 +41,17 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
   const acknowledge = useCity((s) => s.acknowledge);
   const brief = useCity((s) => (division.id === "hq" ? s.brief : null));
   const setPanelTab = useCity((s) => s.setPanelTab);
+  // HQ shows the newest drafts from every division.
+  const drafts = useCity(useShallow((s) => s.drafts.filter((d) => division.id === "hq" || d.division_id === division.id).slice(0, 8)));
 
   // HQ sees across the whole city; every other division sees its own feed.
   const events: EventRow[] = (division.id === "hq" ? allEvents : allEvents.filter((e) => e.division_id === division.id)).slice(0, 40);
+
+  /** What a working crew is doing right now: its latest per-member progress line. */
+  const crewStep = (agent: AgentRow): string | null => {
+    if (agent.runtime !== "crewai" || agent.state !== "working") return null;
+    return allEvents.find((e) => e.agent_id === agent.id && e.type === "run.progress" && typeof e.payload.member === "string")?.summary ?? null;
+  };
 
   return (
     <div className="division-view">
@@ -100,8 +109,11 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
               <li key={agent.id} className="roster-item" data-state={agent.state}>
                 <span className="state-dot" aria-hidden="true" />
                 <span className="roster-main">
-                  <span className="roster-name mono">{agent.display_name}</span>
-                  <span className="muted small">{agent.role}</span>
+                  <span className="roster-name mono">
+                    {agent.display_name}
+                    {agent.runtime === "crewai" ? <span className="crew-badge">CrewAI</span> : null}
+                  </span>
+                  <span className="muted small">{crewStep(agent) ?? agent.role}</span>
                 </span>
                 <span className="roster-side">
                   <span className="roster-state">{STATE_LABEL[agent.state]}</span>
@@ -140,6 +152,15 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
               </li>
             ))}
           </ul>
+        </section>
+      ) : null}
+
+      {drafts.length > 0 ? (
+        <section aria-labelledby="drafts-h">
+          <h3 id="drafts-h" className="section-title mono">
+            {division.id === "hq" ? "Latest drafts" : "Drafts"}
+          </h3>
+          <DraftList drafts={drafts} now={now} showDivision={division.id === "hq"} />
         </section>
       ) : null}
 

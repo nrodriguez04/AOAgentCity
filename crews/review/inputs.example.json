@@ -1,0 +1,9 @@
+{
+  "goal": "Write ParlayLab's weekly business review from its metrics and agent activity, and turn the top recommendations into tasks.",
+  "week_label": "Week of Monday, Oct 12, 2026",
+  "business_context": "# ParlayLab\nSubscription product billed through Stripe (tiers are configured as Stripe prices).\n- Revenue health: MRR, active subscriptions by tier, failed payments, churn.\n- Support inbox: customer questions, billing issues, bug reports.\n- Any email to a customer, refund, or price change goes through the approval queue.",
+  "metrics_now": "- mrr = 4330 usd (change 120) as of 2026-10-12\n- active_subscriptions = 186 count (change 4) as of 2026-10-12\n- failed_payments = 2 count as of 2026-10-12",
+  "activity": "- 2026-10-12 09:15 metric.updated parlaylab.growth-01: MRR $4,330 (+2.9% WoW), 186 active\n- 2026-10-11 17:02 run.succeeded parlaylab.billing-01: 2 failed payments ($38.00 due): 1 dunning email queued, 1 already pending.\n- 2026-10-10 13:31 run.failed parlaylab.support-01: Failed: Gmail token expired\n- 2026-10-09 09:31 run.succeeded parlaylab.support-01: Triaged 7 threads: 4 replies queued, 1 refund request routed to billing, 2 spam.",
+  "open_tasks": "- P1 open (nico): Reconnect the support inbox\n- P3 open (nico): Experiment: annual plan nudge on cancellation",
+  "previous_reviews": "(no earlier reviews)"
+}

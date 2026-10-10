@@ -53,3 +53,13 @@ export type RunTrigger = (typeof RUN_TRIGGERS)[number];
 
 export const TOOL_CALL_STATUSES = ["ok", "error", "denied", "invalid", "pending_approval"] as const;
 export type ToolCallStatus = (typeof TOOL_CALL_STATUSES)[number];
+
+/** How an agent row runs: Claude tool-use loop in the worker, or a CrewAI crew on AMP. */
+export const AGENT_RUNTIMES = ["claude", "crewai"] as const;
+export type AgentRuntime = (typeof AGENT_RUNTIMES)[number];
+
+export const DRAFT_KINDS = ["devlog", "social_post", "article", "newsletter", "report", "plan", "other"] as const;
+export type DraftKind = (typeof DRAFT_KINDS)[number];
+
+export const DRAFT_STATUSES = ["draft", "approved", "published", "discarded"] as const;
+export type DraftStatus = (typeof DRAFT_STATUSES)[number];

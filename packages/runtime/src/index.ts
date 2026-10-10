@@ -4,5 +4,6 @@ export * from "./pricing";
 export * from "./guards";
 export * from "./context";
 export * from "./run";
+export * from "./crew";
 export * from "./approvals";
 export * from "./sweep";

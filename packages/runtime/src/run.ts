@@ -21,7 +21,7 @@ export interface RunRequest {
 }
 
 export type RunOutcome =
-  | { status: "skipped"; reason: "paused" | "disabled" | "budget" | "busy" | "no_goal"; message: string }
+  | { status: "skipped"; reason: "paused" | "disabled" | "budget" | "busy" | "no_goal" | "not_configured"; message: string }
   | { status: RunStatus; runId: string; summary: string; costUsd: number; steps: number };
 
 class StopRun extends Error {

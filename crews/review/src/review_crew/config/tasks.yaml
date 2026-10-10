@@ -1,0 +1,65 @@
+analyze_week:
+  description: >
+    Goal for this run: {goal}
+
+
+    It is the {week_label}. Analyse ParlayLab's last 7 days strictly from this
+    data.
+
+
+    About the business:
+
+    {business_context}
+
+
+    Current metrics, the latest values the agents recorded:
+
+    {metrics_now}
+
+
+    Agent activity in the last 7 days, newest first (metric updates, runs,
+    approvals and failures):
+
+    {activity}
+
+
+    Open tasks:
+
+    {open_tasks}
+
+
+    Earlier weekly reviews, for continuity:
+
+    {previous_reviews}
+
+
+    Report the headline numbers and how they moved, but only where the data
+    shows a change; billing (failed payments, dunning, refunds) and support
+    (volume, categories, replies) as the agents recorded them; what failed or
+    needed Nico; and which numbers are missing or stale.
+  expected_output: >
+    A factual analysis in markdown with sections for numbers, billing,
+    support, failures and data gaps.
+  agent: analyst
+
+write_review:
+  description: >
+    Write the weekly review for Nico from the analyst's findings and return the
+    result:
+
+    - summary: one line for Agent City's activity feed with the key number,
+      for example "Weekly review: MRR $4,330 (+3%), churn steady, 2
+      recommendations".
+
+    - drafts: one draft of kind report (channel null) titled "ParlayLab weekly
+      review" plus the week label, in markdown with the sections Headline,
+      Numbers, Billing and support, What went wrong, Data gaps and
+      Recommendations.
+
+    - tasks: up to three recommendations that are not already in the open
+      tasks, each with a specific title and notes giving the expected effect,
+      the effort and the metric that will show whether it worked; priority 2
+      or 3; due in 7 days. Fewer is better than weak ones.
+  expected_output: >
+    The final result: summary, drafts and tasks.
+  agent: strategist

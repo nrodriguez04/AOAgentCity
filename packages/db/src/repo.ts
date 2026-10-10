@@ -2,6 +2,7 @@ import type {
   AgentEvent,
   AgentPermissionRow,
   AgentRow,
+  AgentRuntime,
   AgentState,
   ApprovalAction,
   ApprovalRow,
@@ -11,6 +12,9 @@ import type {
   DivisionKind,
   DivisionRow,
   DivisionStatus,
+  DraftKind,
+  DraftRow,
+  DraftStatus,
   EmailDraftRow,
   EventRow,
   EventType,
@@ -58,6 +62,7 @@ function mapAgent(r: Raw): AgentRow {
     display_name: String(r.display_name),
     role: String(r.role),
     model_tier: r.model_tier as ModelTier,
+    runtime: ((r.runtime as AgentRuntime | null) ?? "claude") as AgentRuntime,
     instructions: String(r.instructions),
     default_goal: (r.default_goal as string | null) ?? null,
     schedule_cron: (r.schedule_cron as string | null) ?? null,
@@ -166,6 +171,21 @@ function mapPricing(r: Raw): ModelPricingRow {
   };
 }
 
+function mapDocument(r: Raw): DraftRow {
+  return {
+    id: String(r.id),
+    created_at: isoNow(r.created_at),
+    division_id: String(r.division_id),
+    agent_id: String(r.agent_id),
+    run_id: (r.run_id as string | null) ?? null,
+    kind: r.kind as DraftKind,
+    channel: (r.channel as string | null) ?? null,
+    title: String(r.title),
+    body_md: String(r.body_md),
+    status: r.status as DraftStatus,
+  };
+}
+
 function mapDraft(r: Raw): EmailDraftRow {
   return {
     id: String(r.id),
@@ -207,6 +227,16 @@ export interface RunPatch {
   cost_usd?: number;
   error?: string | null;
   transcript?: unknown;
+}
+
+export interface NewDraft {
+  division_id: string;
+  agent_id: string;
+  run_id: string | null;
+  kind: DraftKind;
+  channel: string | null;
+  title: string;
+  body_md: string;
 }
 
 export interface NewTask {
@@ -256,6 +286,8 @@ export interface AgentUpsert {
   display_name: string;
   role: string;
   model_tier: ModelTier;
+  /** Defaults to "claude". */
+  runtime?: AgentRuntime;
   instructions: string;
   default_goal: string | null;
   schedule_cron: string | null;
@@ -340,19 +372,19 @@ export class Repo {
   async upsertAgent(a: AgentUpsert): Promise<void> {
     await this.sql.query(
       `insert into agents (id, division_id, display_name, role, model_tier, instructions, default_goal,
-                           schedule_cron, daily_budget_usd, enabled, state)
+                           schedule_cron, daily_budget_usd, enabled, state, runtime)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9::numeric, $10,
-               case when $10 then 'idle' else 'disabled' end::agent_state)
+               case when $10 then 'idle' else 'disabled' end::agent_state, $11)
        on conflict (id) do update set
          division_id = excluded.division_id, display_name = excluded.display_name, role = excluded.role,
-         model_tier = excluded.model_tier, instructions = excluded.instructions,
+         model_tier = excluded.model_tier, runtime = excluded.runtime, instructions = excluded.instructions,
          default_goal = excluded.default_goal, schedule_cron = excluded.schedule_cron,
          daily_budget_usd = excluded.daily_budget_usd, enabled = excluded.enabled,
          state = case
            when not excluded.enabled then 'disabled'::agent_state
            when agents.state = 'disabled' then 'idle'::agent_state
            else agents.state end`,
-      [a.id, a.division_id, a.display_name, a.role, a.model_tier, a.instructions, a.default_goal, a.schedule_cron, a.daily_budget_usd, a.enabled],
+      [a.id, a.division_id, a.display_name, a.role, a.model_tier, a.instructions, a.default_goal, a.schedule_cron, a.daily_budget_usd, a.enabled, a.runtime ?? "claude"],
     );
   }
 
@@ -750,6 +782,31 @@ export class Repo {
   async countToolCalls(runId: string): Promise<number> {
     const [row] = await this.sql.query<Raw>(`select count(*) as n from tool_calls where run_id = $1::uuid`, [runId]);
     return num(row?.n);
+  }
+
+  // ------------------------------------------------------------------ drafts
+
+  async createDraft(input: NewDraft): Promise<DraftRow> {
+    const [row] = await this.sql.query<Raw>(
+      `insert into drafts (division_id, agent_id, run_id, kind, channel, title, body_md)
+       values ($1, $2, $3::uuid, $4, $5, $6, $7) returning *`,
+      [input.division_id, input.agent_id, input.run_id, input.kind, input.channel, input.title, input.body_md],
+    );
+    return mapDocument(row!);
+  }
+
+  async listDrafts(filter: { divisionId?: string; agentId?: string; runId?: string; since?: Date; limit?: number } = {}): Promise<DraftRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `select * from drafts
+        where ($1::text is null or division_id = $1)
+          and ($2::text is null or agent_id = $2)
+          and ($3::uuid is null or run_id = $3)
+          and ($4::timestamptz is null or created_at >= $4)
+        order by created_at desc
+        limit $5::int`,
+      [filter.divisionId ?? null, filter.agentId ?? null, filter.runId ?? null, filter.since ?? null, filter.limit ?? 50],
+    );
+    return rows.map(mapDocument);
   }
 
   // ------------------------------------------------------------ email drafts

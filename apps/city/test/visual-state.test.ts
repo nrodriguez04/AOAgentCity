@@ -24,6 +24,7 @@ function agent(id: string, division_id: string, state: AgentRow["state"] = "idle
     display_name: id.split(".")[1]!.toUpperCase(),
     role: "role",
     model_tier: "standard",
+    runtime: "claude",
     instructions: "",
     default_goal: null,
     schedule_cron: null,

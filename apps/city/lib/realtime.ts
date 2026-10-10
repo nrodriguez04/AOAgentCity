@@ -1,6 +1,6 @@
-import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
+import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { EVENT_LIMIT, useCity, type Hydration } from "./store";
+import { DRAFT_LIMIT, EVENT_LIMIT, useCity, type Hydration } from "./store";
 import { supabase } from "./supabase";
 
 // Realtime wiring (spec §10.7): hydrate from the tables, then apply deltas.
@@ -23,16 +23,17 @@ async function must<T>(query: PromiseLike<{ data: T | null; error: { message: st
   return data as T;
 }
 
-/** Current agents, divisions, approvals (pending + recent), last 200 events, open tasks, latest brief, settings. */
+/** Current agents, divisions, approvals (pending + recent), last 200 events, open tasks, recent drafts, latest brief, settings. */
 export async function fetchSnapshot(): Promise<Hydration> {
   const db = supabase();
-  const [divisions, agents, pending, recentApprovals, events, tasks, briefs, settings] = await Promise.all([
+  const [divisions, agents, pending, recentApprovals, events, tasks, drafts, briefs, settings] = await Promise.all([
     must(db.from("divisions").select("*")),
     must(db.from("agents").select("*")),
     must(db.from("approvals").select("*").in("status", ["pending", "approved", "executing"]).order("created_at", { ascending: false })),
     must(db.from("approvals").select("*").order("created_at", { ascending: false }).limit(30)),
     must(db.from("events").select("*").order("id", { ascending: false }).limit(EVENT_LIMIT)),
     must(db.from("tasks").select("*").in("status", ["open", "in_progress", "blocked"]).order("priority")),
+    must(db.from("drafts").select("*").order("created_at", { ascending: false }).limit(DRAFT_LIMIT)),
     must(db.from("briefs").select("*").order("created_at", { ascending: false }).limit(1)),
     must(db.from("settings").select("agents_paused, trigger_api_url, updated_at").limit(1)),
   ]);
@@ -44,6 +45,7 @@ export async function fetchSnapshot(): Promise<Hydration> {
     approvals: [...approvals.values()],
     events: (events as Row[]).map(toEvent),
     tasks: tasks as TaskRow[],
+    drafts: drafts as DraftRow[],
     brief: ((briefs as BriefRow[])[0] as BriefRow | undefined) ?? null,
     settings: ((settings as SettingsRow[])[0] as SettingsRow | undefined) ?? null,
   };
@@ -84,6 +86,9 @@ export function connectRealtime(): () => void {
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, (p) => {
       if (p.eventType !== "DELETE") useCity.getState().upsertTask(p.new as TaskRow);
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "drafts" }, (p) => {
+      if (p.eventType !== "DELETE") useCity.getState().upsertDraft(p.new as DraftRow);
     })
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "briefs" }, (p) => useCity.getState().setBrief(p.new as BriefRow))
     .on("postgres_changes", { event: "UPDATE", schema: "public", table: "settings" }, (p) => useCity.getState().setSettings(p.new as SettingsRow))

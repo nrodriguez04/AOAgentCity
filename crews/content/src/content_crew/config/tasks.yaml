@@ -1,0 +1,81 @@
+plan_week:
+  description: >
+    Goal for this run: {goal}
+
+
+    It is the {week_label}. Plan this week's content for Nico's channels.
+
+
+    The content strategy. Follow it: it sets the audience, platforms, voice,
+    pillars, cadence and what never to post.
+
+    {strategy}
+
+
+    Audience metrics so far:
+
+    {metrics}
+
+
+    What happened across Nico's companies in the last 7 days. These are real
+    events and the raw material for build-in-public posts:
+
+    {highlights}
+
+
+    Longer pieces written this period that posts can point to or repurpose:
+
+    {source_drafts}
+
+
+    Posts already drafted recently. Do not repeat them:
+
+    {recent_posts}
+
+
+    Choose three to five posts for the week. For each give the platform, the
+    day, the pillar, the angle in one sentence, and the highlight or source it
+    is based on. Spread them across the strategy's platforms and pillars. If
+    the strategy still says it is a starter draft, plan from it anyway and note
+    that Nico should confirm it.
+  expected_output: >
+    A numbered plan of three to five posts, each with platform, day, pillar,
+    angle and the highlight or source behind it.
+  agent: strategist
+
+write_posts:
+  description: >
+    Write every post in the plan, in its platform's format: X under 270
+    characters, Bluesky under 290 characters, LinkedIn 120 to 250 words,
+    Reddit or Discord under 150 words, and newsletters or articles in
+    markdown. Use only facts from the highlights and sources. First person,
+    plain and specific, no hype words, no hashtags unless the strategy asks for
+    them.
+  expected_output: >
+    Every planned post, written out in full and labelled with its day and
+    platform.
+  agent: writer
+
+edit_and_package:
+  description: >
+    Edit each post for voice, for accuracy against the highlights, and for
+    anything that needs care: no customer data, no revenue figures unless the
+    strategy clears them, no betting advice or promised winnings around
+    ParlayLab, and no release dates for OTHERLIFE. Then return the result:
+
+    - summary: one line for Agent City's activity feed, for example
+      "Planned 4 posts: 2 build-in-public, 1 agents lesson, 1 OTHERLIFE".
+
+    - drafts: first one draft of kind plan (channel null) titled "Content
+      plan" plus the week label, with the plan as a markdown table; then one
+      draft per post, of kind social_post (or article or newsletter for long
+      pieces), with channel set to its platform (x, bluesky, linkedin, reddit,
+      discord or newsletter) and a title of the form "Day platform: angle".
+
+    - tasks: one task "Review and schedule this week's posts", priority 3, due
+      in 1 day, with notes listing the posts. If the strategy is still the
+      starter draft, add a second task "Confirm the CreatorOS content
+      strategy", priority 2, due in 3 days.
+  expected_output: >
+    The final result: summary, drafts and tasks.
+  agent: editor

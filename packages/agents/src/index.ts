@@ -1,15 +1,27 @@
 import { DEFAULT_MODEL_PRICING, DIVISIONS } from "@agent-city/core";
 import type { Repo } from "@agent-city/db";
+import devlogCrew from "../averageoutput/devlog-crew/crew";
+import contentCrew from "../creatoros/content-crew/crew";
 import hq from "../hq/agent";
 import billing from "../parlaylab/billing/agent";
 import growth from "../parlaylab/growth/agent";
+import reviewCrew from "../parlaylab/review-crew/crew";
 import support from "../parlaylab/support/agent";
-import { permissionsFor, type AgentDefinition } from "./define";
+import { isCrew, permissionsFor, type AgentDefinition, type CrewDefinition } from "./define";
 
 export * from "./define";
+export * from "./crew-inputs";
 export { seedSql } from "./seed";
 
-export const AGENTS: AgentDefinition[] = [hq, billing, support, growth];
+/** CrewAI crews: agents rows with runtime "crewai" (crews/<project> on CrewAI AMP). */
+export const CREWS: CrewDefinition[] = [devlogCrew, contentCrew, reviewCrew];
+
+export const AGENTS: AgentDefinition[] = [hq, billing, support, growth, ...CREWS];
+
+export function crewDefinition(id: string): CrewDefinition | undefined {
+  const def = agentDefinition(id);
+  return def && isCrew(def) ? def : undefined;
+}
 
 /** Agents whose schedule is declared in worker code instead of synced to Trigger.dev. */
 export const CODE_SCHEDULED_AGENT_IDS = new Set(["hq.hq-01"]);
@@ -43,6 +55,7 @@ export async function syncToDatabase(repo: Repo): Promise<{ divisions: number; a
       display_name: a.displayName,
       role: a.role,
       model_tier: a.modelTier,
+      runtime: a.runtime,
       instructions: a.instructions,
       default_goal: a.defaultGoal,
       schedule_cron: a.schedule,

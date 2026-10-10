@@ -1,0 +1,9 @@
+{
+  "goal": "Turn this week's AOWorld commits into an OTHERLIFE devlog draft and two or three social posts for Nico to review.",
+  "week_label": "Week of Monday, Oct 5, 2026",
+  "repo": "nrodriguez04/AOWorld",
+  "commit_count": "4",
+  "commits": "[2026-10-09] 973dcba Add machine-readable Aurora geography manifest\n  A JSON manifest of states, cities, coastlines and road corridors that the world builder reads.\n[2026-10-09] ec0557c Add canonical Aurora geography placement specification\n[2026-10-08] f2e131f Add submarine, undersea world, and naval gameplay canon\n[2026-10-07] eabdbda Employment: a city can hire the people who live in it\n  Residents can now be hired by businesses in their city; jobs persist across sessions.",
+  "studio_context": "# AverageOutput\nAverage Output Studios builds OTHERLIFE (codename AOWorld), a persistent multiplayer life simulation in Unreal Engine.\n\n## Devlog voice\n- Honest, specific and a little nerdy: show the systems, and say what is still placeholder.\n- Never promise release dates, platforms, prices or features that are not decided.",
+  "previous_devlogs": "(no devlogs yet: this is the first one)"
+}

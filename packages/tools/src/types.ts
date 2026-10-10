@@ -41,7 +41,7 @@ export interface ToolDefinition<Schema extends z.ZodObject = z.ZodObject> {
   description: string;
   tier: RiskTier;
   /** Which scoped credential the tool needs: "internal" needs none. */
-  integration: "internal" | "stripe" | "email" | "gmail";
+  integration: "internal" | "stripe" | "email" | "gmail" | "github";
   schema: Schema;
   /** One-line, human-readable description of a call. Used as the approval title. */
   describe(args: z.output<Schema>): string;

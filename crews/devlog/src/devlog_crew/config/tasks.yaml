@@ -1,0 +1,73 @@
+analyze_changes:
+  description: >
+    Goal for this run: {goal}
+
+
+    These are the non-merge commits to {repo} for the {week_label}
+    ({commit_count} commits), newest first, as [date] short-sha subject,
+    followed by a trimmed body:
+
+
+    {commits}
+
+
+    Studio context and devlog voice:
+
+    {studio_context}
+
+
+    Earlier devlogs (continue their numbering and avoid repeating their topics):
+
+    {previous_devlogs}
+
+
+    Sort the week's work into four sections: (1) changes a player could see or
+    feel, (2) world and content work such as places, geography and canon,
+    (3) systems and foundations, (4) fixes. For each item write one plain
+    sentence and list the short shas it is based on. Mark anything that is
+    clearly placeholder, internal tooling or not yet playable. End with the two
+    or three most interesting stories of the week and why each matters to a
+    player. Use only what the commits say.
+  expected_output: >
+    A markdown change list in four sections with the supporting shas, followed
+    by the top two or three stories of the week. Facts only, no hype.
+  agent: analyst
+
+write_devlog:
+  description: >
+    Using only the analyst's change list, write:
+
+    1. A devlog post for the Average Output blog, 400 to 700 words of markdown:
+    a title that includes the devlog number (continue from the earlier devlogs,
+    or start at 1), a short intro, one section per top story, an "Also this
+    week" list for smaller items, and an honest "What's next" that promises
+    nothing specific.
+
+    2. A post for X, under 270 characters, and one for Bluesky, under 290
+    characters, each pointing readers to the devlog.
+
+    3. A community post for Reddit or Discord, under 120 words.
+  expected_output: >
+    The devlog in markdown, then the X, Bluesky and community posts, each
+    clearly labelled.
+  agent: writer
+
+edit_and_package:
+  description: >
+    Fact-check the devlog and the posts against the analyst's change list and
+    the commits. Fix or remove any claim the commits do not support, remove
+    hype, and keep each post within its limit. Then return the result:
+
+    - summary: one line for Agent City's activity feed, for example
+      "Devlog 4 drafted: residents can be hired, Aurora geography, 12 fixes".
+
+    - drafts: the devlog (kind devlog, channel blog), the X post (kind
+      social_post, channel x), the Bluesky post (kind social_post, channel
+      bluesky) and the community post (kind social_post, channel reddit).
+
+    - tasks: exactly one task titled "Review and publish devlog N" (with the
+      real number), priority 2, due in 2 days, whose notes list anything Nico
+      should double-check before publishing.
+  expected_output: >
+    The final result: summary, drafts and tasks.
+  agent: editor

@@ -18,10 +18,12 @@ afterEach(() => {
 const state = () => useCity.getState();
 
 describe("demo mode", () => {
-  it("seeds the whole city with the four agents and two waiting approvals", () => {
+  it("seeds the whole city with the four agents, three crews and two waiting approvals", () => {
     expect(state().connection).toBe("demo");
     expect(state().divisions).toHaveLength(9);
-    expect(state().agents.map((a) => a.display_name)).toEqual(["HQ-01", "BILLING-01", "SUPPORT-01", "GROWTH-01"]);
+    expect(state().agents.map((a) => a.display_name)).toEqual(["HQ-01", "BILLING-01", "SUPPORT-01", "GROWTH-01", "DEVLOG CREW", "CONTENT CREW", "REVIEW CREW"]);
+    expect(state().agents.filter((a) => a.runtime === "crewai").map((a) => a.division_id)).toEqual(["averageoutput", "creatoros", "parlaylab"]);
+    expect(state().drafts.length).toBeGreaterThan(0);
     expect(state().approvals.filter((a) => a.status === "pending")).toHaveLength(2);
     expect(state().brief?.body_md).toContain("# Daily brief");
 
@@ -52,6 +54,24 @@ describe("demo mode", () => {
     vi.advanceTimersByTime(5_000);
     expect(state().approvals.find((a) => a.id === email.id)).toMatchObject({ status: "rejected", decided_note: "Too early to chase" });
     expect(state().events.some((e) => e.type === "action.executed" && e.summary.includes(email.title))).toBe(false);
+  });
+
+  it("runs a crew member by member and hands back drafts and tasks", () => {
+    vi.advanceTimersByTime(8_000);
+    const before = state().drafts.length;
+    vi.advanceTimersByTime(30_000);
+    const crewEvents = state().events.filter((e) => e.agent_id === "averageoutput.devlog-crew").map((e) => e.summary);
+    expect(crewEvents).toEqual(expect.arrayContaining([
+      expect.stringMatching(/^Analyst: .* \(1\/3\)$/),
+      expect.stringMatching(/^Writer: .* \(2\/3\)$/),
+      expect.stringMatching(/^Editor: .* \(3\/3\)$/),
+      expect.stringMatching(/^Draft ready: OTHERLIFE devlog 2/),
+      "New task: Review and publish devlog 2",
+    ]));
+    expect(state().drafts.length).toBeGreaterThan(before);
+    expect(state().drafts[0]).toMatchObject({ agent_id: "averageoutput.devlog-crew", status: "draft" });
+    const tower = deriveVisualState({ ...state(), acks: {}, selectedDivisionId: null }).find((b) => b.divisionId === "averageoutput")!;
+    expect(tower.underConstruction).toBe(false);
   });
 
   it("keeps agents busy until paused", () => {

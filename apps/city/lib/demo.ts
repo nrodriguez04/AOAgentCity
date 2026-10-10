@@ -5,6 +5,7 @@ import {
   type ApprovalRow,
   type BriefRow,
   type DivisionRow,
+  type DraftRow,
   type EventRow,
   type EventType,
   type MetricValue,
@@ -18,12 +19,93 @@ import { useCity } from "./store";
 
 type Level = EventRow["level"];
 
-const DEMO_AGENTS: Pick<AgentRow, "id" | "division_id" | "display_name" | "role" | "model_tier" | "schedule_cron">[] = [
-  { id: "hq.hq-01", division_id: "hq", display_name: "HQ-01", role: "Daily brief and routing", model_tier: "reasoning", schedule_cron: "55 6 * * *" },
-  { id: "parlaylab.billing-01", division_id: "parlaylab", display_name: "BILLING-01", role: "Subscription operations", model_tier: "standard", schedule_cron: "0 8,17 * * *" },
-  { id: "parlaylab.support-01", division_id: "parlaylab", display_name: "SUPPORT-01", role: "Support inbox triage and replies", model_tier: "standard", schedule_cron: "30 9,13,17 * * *" },
-  { id: "parlaylab.growth-01", division_id: "parlaylab", display_name: "GROWTH-01", role: "Signups, conversions and MRR", model_tier: "standard", schedule_cron: "15 9 * * *" },
+const DEMO_AGENTS: Pick<AgentRow, "id" | "division_id" | "display_name" | "role" | "model_tier" | "schedule_cron" | "runtime">[] = [
+  { id: "hq.hq-01", division_id: "hq", display_name: "HQ-01", role: "Daily brief and routing", model_tier: "reasoning", schedule_cron: "55 6 * * *", runtime: "claude" },
+  { id: "parlaylab.billing-01", division_id: "parlaylab", display_name: "BILLING-01", role: "Subscription operations", model_tier: "standard", schedule_cron: "0 8,17 * * *", runtime: "claude" },
+  { id: "parlaylab.support-01", division_id: "parlaylab", display_name: "SUPPORT-01", role: "Support inbox triage and replies", model_tier: "standard", schedule_cron: "30 9,13,17 * * *", runtime: "claude" },
+  { id: "parlaylab.growth-01", division_id: "parlaylab", display_name: "GROWTH-01", role: "Signups, conversions and MRR", model_tier: "standard", schedule_cron: "15 9 * * *", runtime: "claude" },
+  // CrewAI crews (crews/*), working alongside the Claude agents.
+  { id: "averageoutput.devlog-crew", division_id: "averageoutput", display_name: "DEVLOG CREW", role: "Weekly OTHERLIFE devlog: analyst, writer, editor", model_tier: "standard", schedule_cron: "0 15 * * 5", runtime: "crewai" },
+  { id: "creatoros.content-crew", division_id: "creatoros", display_name: "CONTENT CREW", role: "Weekly content plan and posts: strategist, writer, editor", model_tier: "standard", schedule_cron: "0 8 * * 1", runtime: "crewai" },
+  { id: "parlaylab.review-crew", division_id: "parlaylab", display_name: "REVIEW CREW", role: "Weekly business review: analyst, strategist", model_tier: "standard", schedule_cron: "15 7 * * 1", runtime: "crewai" },
 ];
+
+type DemoDraft = Pick<DraftRow, "kind" | "channel" | "title" | "body_md">;
+
+/** What each crew does in the demo: its tasks in order, then the drafts and tasks it hands back. */
+const CREW_SCRIPTS: Record<string, { goal: string; steps: { member: string; label: string }[]; summary: string; drafts: DemoDraft[]; tasks: { title: string; priority: number }[] }> = {
+  "averageoutput.devlog-crew": {
+    goal: "Turn this week's AOWorld commits into an OTHERLIFE devlog draft and two or three social posts for Nico to review.",
+    steps: [
+      { member: "Analyst", label: "Sorting the week's commits into player-facing changes" },
+      { member: "Writer", label: "Writing the devlog and social posts" },
+      { member: "Editor", label: "Fact-checking every claim against the commits" },
+    ],
+    summary: "Devlog 2 drafted: the naval canon, Aurora's road corridors and 11 fixes",
+    drafts: [
+      {
+        kind: "devlog",
+        channel: "blog",
+        title: "OTHERLIFE devlog 2: roads, harbours and what lies under the water",
+        body_md:
+          "# OTHERLIFE devlog 2: roads, harbours and what lies under the water\n\nThis week was about connecting Aurora. The world builder now reads a single geography manifest, so states, coastlines and the long road corridors between cities come from one source of truth instead of hand-placed pieces.\n\n## Under the water\nWe wrote down how the undersea world works: submarines, naval jobs and what you will find off the coast. It is canon for now, not gameplay yet, and we will show it when it is playable.\n\n## Also this week\n- 11 fixes to persistence and streaming\n- Harbour footprints placed for the coastal cities\n\n## What's next\nMore of the map becomes a place you can drive through. No dates; we will show it when it works.",
+      },
+      { kind: "social_post", channel: "x", title: "X: devlog 2", body_md: "OTHERLIFE devlog 2: Aurora's roads now come from one geography manifest, and we wrote the canon for what lives under the water. Not playable yet, but the map is starting to connect. Link in replies." },
+      { kind: "social_post", channel: "bluesky", title: "Bluesky: devlog 2", body_md: "Devlog 2 is up. This week Aurora got its road corridors and harbours from a single manifest, plus the canon for submarines and naval work. Honest status: mostly foundations, some of it you will drive on soon." },
+    ],
+    tasks: [{ title: "Review and publish devlog 2", priority: 2 }],
+  },
+  "creatoros.content-crew": {
+    goal: "Plan this week's CreatorOS content from the strategy doc and what happened across the divisions, and draft every post for Nico to review.",
+    steps: [
+      { member: "Strategist", label: "Choosing this week's posts" },
+      { member: "Writer", label: "Writing each post for its platform" },
+      { member: "Editor", label: "Editing for voice and accuracy" },
+    ],
+    summary: "Planned 4 posts: 2 build-in-public, 1 agents lesson, 1 OTHERLIFE",
+    drafts: [
+      {
+        kind: "plan",
+        channel: null,
+        title: "Content plan: week of Monday, Oct 12",
+        body_md:
+          "| Day | Platform | Pillar | Angle |\n|---|---|---|---|\n| Mon | X | Build in public | My support agent triaged its first full week |\n| Wed | LinkedIn | Agents lesson | Why every agent action waits for my approval |\n| Thu | Bluesky | OTHERLIFE | Devlog 2: roads and harbours |\n| Fri | X | Build in public | What the city looked like this week |",
+      },
+      { kind: "social_post", channel: "x", title: "Mon x: the support agent's first week", body_md: "My support agent triaged 23 emails this week. It drafted 14 replies; I sent 12 and rewrote 2. The other 9 were spam or routed to billing. Nothing goes out without my click." },
+      {
+        kind: "social_post",
+        channel: "linkedin",
+        title: "Wed linkedin: every action waits for approval",
+        body_md:
+          "I run my companies with a handful of AI agents. The rule that makes it work: anything that spends money or contacts a customer waits in an approval queue, and runs exactly as I approved it, once.\n\nThis week that meant 2 refunds and 9 emails I checked in under five minutes a day.",
+      },
+    ],
+    tasks: [{ title: "Review and schedule this week's posts", priority: 3 }],
+  },
+  "parlaylab.review-crew": {
+    goal: "Write ParlayLab's weekly business review from its metrics and agent activity, and turn the top recommendations into tasks.",
+    steps: [
+      { member: "Analyst", label: "Measuring the week from ParlayLab's data" },
+      { member: "Strategist", label: "Writing the review and recommendations" },
+    ],
+    summary: "Weekly review: MRR $4,236 (+3.1%), support inbox down 2 days, 2 recommendations",
+    drafts: [
+      {
+        kind: "report",
+        channel: null,
+        title: "ParlayLab weekly review: week of Monday, Oct 12",
+        body_md:
+          "## Headline\nMRR **$4,236** (+3.1% week over week), 183 active subscriptions.\n\n## Billing and support\n- 3 failed payments, $57.00 due; 1 recovered on retry, 1 dunning email waiting for approval.\n- Support triaged 12 threads; the inbox was disconnected for 2 days (Gmail token expired).\n\n## Data gaps\nNo churn reasons recorded yet.\n\n## Recommendations\n1. Alert when the support inbox disconnects (effect: no silent gaps; metric: days without triage).\n2. Card-update reminder 3 days before renewal (effect: fewer failed payments; metric: failed_payments).",
+      },
+    ],
+    tasks: [
+      { title: "Add an alert when the support inbox disconnects", priority: 2 },
+      { title: "Test a card-update reminder 3 days before renewal", priority: 3 },
+    ],
+  },
+};
+
+const CREW_IDS = Object.keys(CREW_SCRIPTS);
 
 const RUN_SCRIPTS: Record<string, { goal: string; results: string[] }> = {
   "parlaylab.billing-01": {
@@ -136,8 +218,8 @@ function initialState() {
     instructions: "",
     default_goal: null,
     state: a.id === "parlaylab.billing-01" ? "waiting_approval" : a.id === "parlaylab.support-01" ? "error" : "idle",
-    last_checkin_at: isoAgo(minutes(a.id === "hq.hq-01" ? 3 : 25)),
-    daily_budget_usd: a.model_tier === "reasoning" ? 3 : 1.5,
+    last_checkin_at: isoAgo(minutes(a.runtime === "crewai" ? 60 * 26 : a.id === "hq.hq-01" ? 3 : 25)),
+    daily_budget_usd: a.runtime === "crewai" ? 2 : a.model_tier === "reasoning" ? 3 : 1.5,
     enabled: true,
     created_at: isoAgo(minutes(60 * 24 * 7)),
   }));
@@ -203,8 +285,35 @@ function initialState() {
     ...t,
   })) as TaskRow[];
 
+  const draft = (agent_id: string, division_id: string, d: DemoDraft, agoMs: number): DraftRow => ({
+    id: uuid(),
+    created_at: isoAgo(agoMs),
+    division_id,
+    agent_id,
+    run_id: null,
+    status: "draft",
+    ...d,
+  });
+  // What the crews handed back last week, so the drafts lists are not empty on load.
+  const drafts: DraftRow[] = [
+    draft("averageoutput.devlog-crew", "averageoutput", {
+      kind: "devlog",
+      channel: "blog",
+      title: "OTHERLIFE devlog 1: a city that hires the people who live in it",
+      body_md:
+        "# OTHERLIFE devlog 1: a city that hires the people who live in it\n\nThe first devlog. This week a city in Aurora learned to employ its own residents: businesses can now hire people who live nearby, and those jobs persist when you log off and come back.\n\n## The map\nWe also wrote down where everything in Aurora goes, from coastlines to mountain ranges, as a specification the world builder can read.\n\n## What's next\nMaking more of that map something you can actually walk and drive through.",
+    }, minutes(60 * 26)),
+    draft("averageoutput.devlog-crew", "averageoutput", { kind: "social_post", channel: "x", title: "X: devlog 1", body_md: "OTHERLIFE devlog 1: cities in Aurora can now hire the people who live in them, and the jobs persist across sessions. First devlog of many. Link in replies." }, minutes(60 * 26)),
+    draft("parlaylab.review-crew", "parlaylab", {
+      kind: "report",
+      channel: null,
+      title: "ParlayLab weekly review: week of Monday, Oct 5",
+      body_md: "## Headline\nMRR **$4,084** (+1.2%), 177 active subscriptions.\n\n## Recommendations\n1. Ask cancelling customers for a reason (metric: churn reasons recorded).",
+    }, minutes(60 * 24 * 4)),
+  ];
+
   const brief: BriefRow = { id: uuid(), created_at: isoAgo(minutes(3)), body_md: DEMO_BRIEF(new Date()), run_id: null };
-  return { divisions, agents, approvals, events, tasks, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
+  return { divisions, agents, approvals, events, tasks, drafts, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
 }
 
 // ----------------------------------------------------------------- simulation
@@ -310,10 +419,46 @@ function simulateBrief() {
   });
 }
 
+/** A crew run: each member's task in turn (the tower lights up), then its drafts and tasks. */
+function simulateCrew(crewId: string) {
+  const agent = useCity.getState().agents.find((a) => a.id === crewId);
+  const script = CREW_SCRIPTS[crewId];
+  if (!agent || !script || agent.state === "working" || paused()) return;
+  const division = agent.division_id;
+  const steps = script.steps.length;
+  setAgent(crewId, { state: "working" });
+  emit(division, crewId, "run.started", script.goal);
+
+  script.steps.forEach((step, i) => {
+    later(1_500 + i * 6_000, () => {
+      if (paused()) return;
+      setAgent(crewId, { state: "working" });
+      emit(division, crewId, "run.progress", `${step.member}: ${step.label} (${i + 1}/${steps})`, "info", { member: step.member, step: i + 1, steps });
+    });
+  });
+
+  later(1_500 + steps * 6_000, () => {
+    if (paused()) return;
+    for (const d of script.drafts) {
+      const row: DraftRow = { id: uuid(), created_at: new Date().toISOString(), division_id: division, agent_id: crewId, run_id: null, status: "draft", ...d };
+      useCity.getState().upsertDraft(row);
+      emit(division, crewId, "run.progress", `Draft ready: ${d.title}`.slice(0, 200), "info", { draft_id: row.id, kind: d.kind, channel: d.channel });
+    }
+    for (const t of script.tasks) {
+      const now = new Date().toISOString();
+      useCity.getState().upsertTask({ id: uuid(), division_id: division, title: t.title, notes: null, owner: "nico", status: "open", priority: t.priority, due_at: null, source: crewId, created_at: now, updated_at: now });
+      emit(division, crewId, "task.created", `New task: ${t.title}`.slice(0, 200));
+    }
+    setAgent(crewId, { state: "idle" });
+    emit(division, crewId, "run.succeeded", script.summary, "success");
+  });
+}
+
 function loop() {
   if (!paused()) {
     const candidates = ["parlaylab.billing-01", "parlaylab.support-01", "parlaylab.growth-01"];
     simulateRun(pick(candidates));
+    if (Math.random() < 0.12) simulateCrew(pick(CREW_IDS));
     if (Math.random() < 0.25) {
       const followers = useCity.getState().divisions.find((d) => d.id === "creatoros")?.metrics.followers;
       const gain = Math.round(20 + Math.random() * 90);
@@ -336,6 +481,8 @@ export function startDemo(): () => void {
   store.setConnection("demo");
   running = true;
   later(2_000, loop);
+  // Start one crew early so the city shows a crew at work within seconds.
+  later(9_000, () => simulateCrew("averageoutput.devlog-crew"));
   later(70_000, function briefLoop() {
     simulateBrief();
     later(120_000, briefLoop);

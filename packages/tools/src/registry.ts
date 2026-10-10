@@ -1,6 +1,7 @@
 import { requiresApproval, TIER_LABELS } from "@agent-city/core";
 import { z } from "zod";
 import { EMAIL_TOOLS } from "./integrations/email";
+import { GITHUB_TOOLS } from "./integrations/github";
 import { SUPPORT_TOOLS } from "./integrations/gmail";
 import { HQ_TOOLS } from "./integrations/hq";
 import { INTERNAL_TOOLS } from "./integrations/internal";
@@ -16,6 +17,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
   ...STRIPE_TOOLS,
   ...EMAIL_TOOLS,
   ...SUPPORT_TOOLS,
+  ...GITHUB_TOOLS,
 ] as unknown as ToolDefinition[];
 
 export const registry = new Map<string, ToolDefinition>();

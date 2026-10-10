@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./crew-specs": "./src/crew-specs.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

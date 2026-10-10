@@ -1,8 +1,11 @@
 import type {
+  AgentRuntime,
   AgentState,
   ApprovalStatus,
   DivisionKind,
   DivisionStatus,
+  DraftKind,
+  DraftStatus,
   EventLevel,
   ModelTier,
   RiskTier,
@@ -43,6 +46,8 @@ export interface AgentRow {
   display_name: string;
   role: string;
   model_tier: ModelTier;
+  /** "crewai" rows are crews: they run on CrewAI AMP instead of the Claude loop. */
+  runtime: AgentRuntime;
   instructions: string;
   default_goal: string | null;
   schedule_cron: string | null;
@@ -182,4 +187,18 @@ export interface EmailDraftRow {
   thread_id: string | null;
   in_reply_to: string | null;
   status: "draft" | "queued" | "sent" | "discarded";
+}
+
+/** A document an agent or crew wrote for Nico to review (devlog, post, report, plan). */
+export interface DraftRow {
+  id: string;
+  created_at: string;
+  division_id: string;
+  agent_id: string;
+  run_id: string | null;
+  kind: DraftKind;
+  channel: string | null;
+  title: string;
+  body_md: string;
+  status: DraftStatus;
 }

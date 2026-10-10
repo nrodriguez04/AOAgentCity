@@ -1,4 +1,4 @@
-import { MetricValue, TASK_STATUSES, toSummary, type TaskRow } from "@agent-city/core";
+import { DRAFT_KINDS, MetricValue, TASK_STATUSES, toSummary, type TaskRow } from "@agent-city/core";
 import { emit } from "@agent-city/db";
 import { z } from "zod";
 import { defineTool, ToolError, type ToolContext } from "../types";
@@ -202,4 +202,97 @@ export const divisionUpdateContext = defineTool({
   },
 });
 
-export const INTERNAL_TOOLS = [taskList, taskCreate, taskUpdate, metricRecord, eventsRecent, divisionUpdateContext];
+export const divisionGet = defineTool({
+  name: "division.get",
+  tier: "read",
+  integration: "internal",
+  description: "One division's status, summary, latest metrics and living context document.",
+  schema: z.object({ division_id: z.string() }),
+  describe: (a) => `Read division ${a.division_id}`,
+  async execute(a, ctx) {
+    const d = await ctx.repo.getDivision(a.division_id);
+    if (!d) throw new ToolError("not_found", `No division ${a.division_id}.`);
+    return { id: d.id, name: d.name, kind: d.kind, status: d.status, summary: d.summary, metrics: d.metrics, context_md: d.context_md };
+  },
+});
+
+export const draftSave = defineTool({
+  name: "draft.save",
+  tier: "internal_write",
+  integration: "internal",
+  description:
+    "Save a document for Nico to review in the city: a devlog, social post, article, newsletter, report or plan. Saving never publishes anything.",
+  schema: z.object({
+    kind: z.enum(DRAFT_KINDS),
+    channel: z.string().min(1).max(40).optional().describe("Where it would be published: blog, x, bluesky, reddit, discord, newsletter..."),
+    title: z.string().min(1).max(200),
+    body_md: z.string().min(1).max(40_000),
+  }),
+  describe: (a) => `Save ${a.kind.replace("_", " ")} draft "${a.title}"`,
+  async execute(a, ctx) {
+    const draft = await ctx.repo.createDraft({
+      division_id: ctx.agent.division_id,
+      agent_id: ctx.agent.id,
+      run_id: ctx.runId,
+      kind: a.kind,
+      channel: a.channel ?? null,
+      title: a.title,
+      body_md: a.body_md,
+    });
+    await emit(
+      ctx.repo,
+      {
+        division_id: ctx.agent.division_id,
+        agent_id: ctx.agent.id,
+        run_id: ctx.runId ?? undefined,
+        type: "run.progress",
+        summary: toSummary(`Draft ready: ${a.title}`),
+        payload: { draft_id: draft.id, kind: draft.kind, channel: draft.channel },
+      },
+      { agentState: null },
+    );
+    return { draft_id: draft.id };
+  },
+});
+
+export const draftsRecent = defineTool({
+  name: "drafts.recent",
+  tier: "read",
+  integration: "internal",
+  description: "Recent drafts (devlogs, posts, reports, plans), newest first, with a short excerpt of each.",
+  schema: z.object({
+    division_id: z.string().optional(),
+    days: z.number().int().min(1).max(90).optional().describe("Look-back window, default 30"),
+    limit: z.number().int().min(1).max(100).optional(),
+  }),
+  describe: (a) => `Read drafts${a.division_id ? ` for ${a.division_id}` : ""}`,
+  async execute(a, ctx) {
+    const since = new Date(ctx.now().getTime() - (a.days ?? 30) * 86_400_000);
+    const drafts = await ctx.repo.listDrafts({ divisionId: a.division_id, since, limit: a.limit ?? 30 });
+    return {
+      drafts: drafts.map((d) => ({
+        id: d.id,
+        created_at: d.created_at,
+        division_id: d.division_id,
+        agent_id: d.agent_id,
+        kind: d.kind,
+        channel: d.channel,
+        title: d.title,
+        status: d.status,
+        excerpt: d.body_md.slice(0, 280),
+      })),
+    };
+  },
+});
+
+export const INTERNAL_TOOLS = [
+  taskList,
+  taskCreate,
+  taskUpdate,
+  metricRecord,
+  eventsRecent,
+  divisionUpdateContext,
+  divisionGet,
+  draftSave,
+  draftsRecent,
+];

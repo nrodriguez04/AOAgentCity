@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseCrewOutput,
   AgentEvent,
   computeCostUsd,
   DEFAULT_MODEL_PRICING,
@@ -98,5 +99,23 @@ describe("money", () => {
   it("formats Stripe minor units", () => {
     expect(formatMinorUnits(1900, "usd")).toBe("$19.00");
     expect(formatMinorUnits(500, "jpy")).toBe("¥500");
+  });
+});
+
+describe("crew results", () => {
+  const result = { summary: "Devlog 2 drafted", drafts: [{ kind: "devlog", channel: "blog", title: "Devlog 2", body_md: "# Devlog 2" }], tasks: [] };
+
+  it("finds the JSON in plain, fenced or wrapped output", () => {
+    for (const text of [JSON.stringify(result), "```json\n" + JSON.stringify(result) + "\n```", `Here you go:\n${JSON.stringify(result)}\nDone.`]) {
+      const parsed = parseCrewOutput(text);
+      expect(parsed).toMatchObject({ ok: true, result: { summary: "Devlog 2 drafted", tasks: [] } });
+    }
+  });
+
+  it("rejects results outside the contract", () => {
+    expect(parseCrewOutput("no json here")).toEqual({ ok: false, error: "the output contains no JSON object" });
+    const bad = parseCrewOutput(JSON.stringify({ ...result, drafts: [{ kind: "tweetstorm", title: "x", body_md: "y" }] }));
+    expect(bad.ok).toBe(false);
+    expect(parseCrewOutput(JSON.stringify({ ...result, tasks: Array(6).fill({ title: "Do the thing" }) })).ok).toBe(false);
   });
 });
