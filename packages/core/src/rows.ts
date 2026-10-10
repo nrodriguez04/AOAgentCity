@@ -81,6 +81,12 @@ export interface RunRow {
   cost_usd: number;
   error: string | null;
   transcript: unknown;
+  /** The HQ run that dispatched this one, if any. */
+  parent_run_id: string | null;
+  /** Shared by every run in a dispatch chain (the root run's id). */
+  correlation_id: string | null;
+  /** When the owner was emailed about this run's failure. */
+  notified_at: string | null;
 }
 
 export interface EventRow {
@@ -120,6 +126,10 @@ export interface ApprovalRow {
   expires_at: string;
   executed_at: string | null;
   result: unknown;
+  /** auth.users id of the owner who approved or rejected it (stamped by the database). */
+  decided_by: string | null;
+  /** When the owner was emailed about it. */
+  notified_at: string | null;
 }
 
 export interface TaskRow {
@@ -141,6 +151,21 @@ export interface BriefRow {
   created_at: string;
   body_md: string;
   run_id: string | null;
+  /** When the brief was emailed to the owner. */
+  notified_at: string | null;
+}
+
+/** One owner alert email (kind "digest": approvals and failures; "brief": HQ's brief). No address is stored. */
+export interface NotificationRow {
+  id: string;
+  created_at: string;
+  kind: "digest" | "brief";
+  channel: "email";
+  subject: string;
+  item_count: number;
+  status: "sent" | "failed";
+  provider_message_id: string | null;
+  error: string | null;
 }
 
 export interface SettingsRow {

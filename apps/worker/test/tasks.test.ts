@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { agentScheduledRun, divisionRun } from "../src/tasks/division-run";
 import { executeApprovalTask } from "../src/tasks/execute-approval";
 import { hqDailyBrief } from "../src/tasks/hq";
+import { ownerAlerts } from "../src/tasks/alerts";
 import { sweepApprovals } from "../src/tasks/sweep";
 
 describe("worker tasks", () => {
@@ -14,5 +15,6 @@ describe("worker tasks", () => {
     expect(agentScheduledRun.id).toBe("agent-scheduled-run");
     expect(hqDailyBrief.id).toBe("hq-daily-brief");
     expect(sweepApprovals.id).toBe("sweep-approvals");
+    expect(ownerAlerts.id).toBe("owner-alerts");
   });
 });

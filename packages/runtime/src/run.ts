@@ -18,6 +18,8 @@ export interface RunRequest {
   /** Defaults to the agent's default_goal (scheduled runs). */
   goal?: string | null;
   trigger: RunTrigger;
+  /** The run that dispatched this one (HQ); links the runs into one correlation chain. */
+  parentRunId?: string | null;
 }
 
 export type RunOutcome =
@@ -82,7 +84,7 @@ export async function runAgent(deps: RuntimeDeps, request: RunRequest): Promise<
   }
 
   const modelId = MODELS[agent.model_tier];
-  const run = await repo.createRun({ agent_id: agent.id, trigger: request.trigger, goal, model: modelId });
+  const run = await repo.createRun({ agent_id: agent.id, trigger: request.trigger, goal, model: modelId, parent_run_id: request.parentRunId });
   const base = { division_id: agent.division_id, agent_id: agent.id, run_id: run.id };
   await emit(repo, { ...base, type: "run.started", summary: toSummary(goal), payload: { trigger: request.trigger, model: modelId } });
 

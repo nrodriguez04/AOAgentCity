@@ -172,6 +172,11 @@ describe("row-level security", () => {
       ),
     );
     expect(decided[0]?.status).toBe("rejected");
+    // The database records who decided, from the session (the browser cannot set it).
+    expect(await t.repo.getApproval(approval.id)).toMatchObject({ decided_by: OWNER, decided_at: expect.any(String) });
+    await expect(
+      t.asUser(OWNER, (sql) => sql.query(`update approvals set decided_by = $2 where id = $1`, [approval.id, STRANGER])),
+    ).rejects.toThrow(/permission denied/);
 
     // Decided approvals are final.
     const again = await t.asUser(OWNER, (sql) =>
@@ -188,12 +193,38 @@ describe("row-level security", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("shows alert history to the owner only, and lets nobody write it from the browser", async () => {
+    await t.repo.recordNotification({ kind: "digest", subject: "Agent City: 1 approval waiting", item_count: 1, status: "sent", provider_message_id: "m1", error: null });
+    expect(await t.asUser(OWNER, (sql) => sql.query(`select subject from notifications`))).toEqual([{ subject: "Agent City: 1 approval waiting" }]);
+    expect(await t.asUser(STRANGER, (sql) => sql.query(`select subject from notifications`))).toEqual([]);
+    await expect(
+      t.asUser(OWNER, (sql) => sql.query(`insert into notifications (kind, subject, status) values ('digest', 'x', 'sent')`)),
+    ).rejects.toThrow(/permission denied/);
+  });
+
   it("lets the owner pause the city", async () => {
     await t.asUser(OWNER, (sql) => sql.query(`update settings set agents_paused = true where id`));
     expect((await t.repo.getSettings()).agents_paused).toBe(true);
     await expect(
       t.asUser(OWNER, (sql) => sql.query(`update settings set trigger_api_url = 'https://evil.example' where id`)),
     ).rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("run lineage", () => {
+  it("links HQ-dispatched runs to the run that dispatched them, in one correlation chain", async () => {
+    const root = await t.repo.createRun({ agent_id: "hq.hq-01", trigger: "cron", goal: "brief", model: null });
+    expect(root).toMatchObject({ parent_run_id: null, correlation_id: root.id });
+
+    const child = await t.repo.createRun({ agent_id: "parlaylab.billing-01", trigger: "hq", goal: "check", model: null, parent_run_id: root.id });
+    expect(child).toMatchObject({ parent_run_id: root.id, correlation_id: root.id });
+
+    const grandchild = await t.repo.createRun({ agent_id: "hq.hq-01", trigger: "hq", goal: "follow up", model: null, parent_run_id: child.id });
+    expect(grandchild).toMatchObject({ parent_run_id: child.id, correlation_id: root.id });
+
+    // An unknown parent (e.g. a run from another environment) starts a fresh chain instead of failing.
+    const orphan = await t.repo.createRun({ agent_id: "hq.hq-01", trigger: "hq", goal: "x", model: null, parent_run_id: "00000000-0000-4000-8000-000000000000" });
+    expect(orphan).toMatchObject({ parent_run_id: null, correlation_id: orphan.id });
   });
 });
 

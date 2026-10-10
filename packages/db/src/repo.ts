@@ -21,6 +21,7 @@ import type {
   MetricValue,
   ModelPricingRow,
   ModelTier,
+  NotificationRow,
   RiskTier,
   RunRow,
   RunStatus,
@@ -92,6 +93,9 @@ function mapRun(r: Raw): RunRow {
     cost_usd: num(r.cost_usd),
     error: (r.error as string | null) ?? null,
     transcript: r.transcript ?? null,
+    parent_run_id: (r.parent_run_id as string | null) ?? null,
+    correlation_id: (r.correlation_id as string | null) ?? null,
+    notified_at: iso(r.notified_at),
   };
 }
 
@@ -129,6 +133,8 @@ function mapApproval(r: Raw): ApprovalRow {
     expires_at: isoNow(r.expires_at),
     executed_at: iso(r.executed_at),
     result: r.result ?? null,
+    decided_by: (r.decided_by as string | null) ?? null,
+    notified_at: iso(r.notified_at),
   };
 }
 
@@ -154,6 +160,21 @@ function mapBrief(r: Raw): BriefRow {
     created_at: isoNow(r.created_at),
     body_md: String(r.body_md),
     run_id: (r.run_id as string | null) ?? null,
+    notified_at: iso(r.notified_at),
+  };
+}
+
+function mapNotification(r: Raw): NotificationRow {
+  return {
+    id: String(r.id),
+    created_at: isoNow(r.created_at),
+    kind: r.kind as NotificationRow["kind"],
+    channel: "email",
+    subject: String(r.subject),
+    item_count: num(r.item_count),
+    status: r.status as NotificationRow["status"],
+    provider_message_id: (r.provider_message_id as string | null) ?? null,
+    error: (r.error as string | null) ?? null,
   };
 }
 
@@ -420,11 +441,26 @@ export class Repo {
 
   // -------------------------------------------------------------------- runs
 
-  async createRun(input: { agent_id: string; trigger: RunTrigger; goal: string | null; model: string | null }): Promise<RunRow> {
+  /**
+   * Start a run. A run dispatched by another run (HQ) records it as parent and
+   * joins its correlation chain; every other run starts its own chain.
+   */
+  async createRun(input: {
+    agent_id: string;
+    trigger: RunTrigger;
+    goal: string | null;
+    model: string | null;
+    parent_run_id?: string | null;
+  }): Promise<RunRow> {
     const [row] = await this.sql.query<Raw>(
-      `insert into runs (agent_id, trigger, goal, model, status, started_at)
-       values ($1, $2, $3, $4, 'running', now()) returning *`,
-      [input.agent_id, input.trigger, input.goal, input.model],
+      `with new_run as (select gen_random_uuid() as id),
+            parent as (select id, correlation_id from runs where id = $5::uuid)
+       insert into runs (id, agent_id, trigger, goal, model, status, started_at, parent_run_id, correlation_id)
+       select n.id, $1, $2, $3, $4, 'running', now(), (select id from parent),
+              coalesce((select coalesce(correlation_id, id) from parent), n.id)
+         from new_run n
+       returning *`,
+      [input.agent_id, input.trigger, input.goal, input.model, input.parent_run_id ?? null],
     );
     return mapRun(row!);
   }
@@ -761,6 +797,70 @@ export class Repo {
   }
 
   // -------------------------------------------------------------- tool calls
+
+  // ------------------------------------------------------------- owner alerts
+  // Each claim marks rows notified in one statement, so two alert runs never
+  // email the same item. A failed send releases its claims for the next run.
+
+  /** Pending approvals nobody has been emailed about yet, oldest first. */
+  async claimUnnotifiedApprovals(limit = 50): Promise<ApprovalRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `update approvals set notified_at = now()
+        where id in (select id from approvals
+                      where notified_at is null and status = 'pending'
+                      order by created_at limit $1 for update skip locked)
+        returning *`,
+      [limit],
+    );
+    return rows.map(mapApproval).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+
+  /** Runs that failed after `since` and were not emailed yet, oldest first. */
+  async claimUnnotifiedFailedRuns(since: Date, limit = 50): Promise<RunRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `update runs set notified_at = now()
+        where id in (select id from runs
+                      where notified_at is null and status = 'failed' and ended_at >= $1
+                      order by ended_at limit $2 for update skip locked)
+        returning *`,
+      [since, limit],
+    );
+    return rows.map(mapRun).sort((a, b) => (a.ended_at ?? "").localeCompare(b.ended_at ?? ""));
+  }
+
+  /** Briefs published after `since` that were not emailed yet, oldest first. */
+  async claimUnnotifiedBriefs(since: Date, limit = 3): Promise<BriefRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `update briefs set notified_at = now()
+        where id in (select id from briefs
+                      where notified_at is null and created_at >= $1
+                      order by created_at limit $2 for update skip locked)
+        returning *`,
+      [since, limit],
+    );
+    return rows.map(mapBrief).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  }
+
+  /** Undo claims after a failed send, so the next alert run includes those items again. */
+  async releaseNotificationClaims(ids: { approvals?: string[]; runs?: string[]; briefs?: string[] }): Promise<void> {
+    if (ids.approvals?.length) await this.sql.query(`update approvals set notified_at = null where id = any($1::uuid[])`, [ids.approvals]);
+    if (ids.runs?.length) await this.sql.query(`update runs set notified_at = null where id = any($1::uuid[])`, [ids.runs]);
+    if (ids.briefs?.length) await this.sql.query(`update briefs set notified_at = null where id = any($1::uuid[])`, [ids.briefs]);
+  }
+
+  async recordNotification(input: Omit<NotificationRow, "id" | "created_at" | "channel">): Promise<NotificationRow> {
+    const [row] = await this.sql.query<Raw>(
+      `insert into notifications (kind, subject, item_count, status, provider_message_id, error)
+       values ($1, left($2, 200), $3, $4, $5, $6) returning *`,
+      [input.kind, input.subject, input.item_count, input.status, input.provider_message_id, input.error],
+    );
+    return mapNotification(row!);
+  }
+
+  async lastNotification(): Promise<NotificationRow | null> {
+    const [row] = await this.sql.query<Raw>(`select * from notifications order by created_at desc limit 1`);
+    return row ? mapNotification(row) : null;
+  }
 
   async logToolCall(entry: ToolCallLog): Promise<void> {
     await this.sql.query(

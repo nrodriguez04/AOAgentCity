@@ -8,6 +8,8 @@ export interface DivisionRunPayload {
   agentId: string;
   goal?: string | null;
   trigger: RunTrigger;
+  /** Set when HQ dispatched this run: the dispatching run's id. */
+  parentRunId?: string | null;
 }
 
 /** Claude agents run the tool-use loop here; crews (runtime "crewai") run on CrewAI AMP. */

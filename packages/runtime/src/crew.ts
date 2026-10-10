@@ -292,7 +292,7 @@ export async function runCrew(deps: CrewRuntimeDeps, request: RunRequest, crew: 
     return { status: "skipped", reason: "not_configured", message };
   }
 
-  const run = await repo.createRun({ agent_id: agent.id, trigger: request.trigger, goal, model: "crewai" });
+  const run = await repo.createRun({ agent_id: agent.id, trigger: request.trigger, goal, model: "crewai", parent_run_id: request.parentRunId });
   const inRun = { ...base, run_id: run.id };
   await emit(repo, { ...inRun, type: "run.started", summary: toSummary(goal), payload: { trigger: request.trigger, runtime: "crewai", project: crew.project } });
 

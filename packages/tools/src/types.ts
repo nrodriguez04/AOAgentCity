@@ -5,7 +5,7 @@ import type { z } from "zod";
 /** Side-effect capabilities the runtime injects, so tools stay testable. */
 export interface ToolServices {
   /** Queue a division run (HQ's hq.dispatch_run). Returns the job/run handle id. */
-  dispatchRun?(input: { agentId: string; goal: string }): Promise<{ id: string }>;
+  dispatchRun?(input: { agentId: string; goal: string; parentRunId: string | null }): Promise<{ id: string }>;
   /**
    * One-shot model call used inside a tool (e.g. fast-model classification).
    * The runtime bills the usage to the current run.

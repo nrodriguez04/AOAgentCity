@@ -15,10 +15,10 @@ export function runtimeDeps(): CrewRuntimeDeps {
     sleep: (ms) => wait.for({ seconds: Math.max(1, Math.round(ms / 1000)) }),
     services: {
       // HQ's hq.dispatch_run: queue a division run on that agent's own queue.
-      dispatchRun: async ({ agentId, goal }) => {
+      dispatchRun: async ({ agentId, goal, parentRunId }) => {
         const handle = await tasks.trigger<typeof divisionRun>(
           "division-run",
-          { agentId, goal, trigger: "hq" },
+          { agentId, goal, trigger: "hq", parentRunId },
           { concurrencyKey: agentId, tags: [`agent:${agentId}`, "trigger:hq"] },
         );
         return { id: handle.id };

@@ -159,7 +159,7 @@ export const hqDispatchRun = defineTool({
     if (!target) throw new ToolError("not_found", `No agent ${a.agent_id}.`);
     if (!target.enabled) throw new ToolError("disabled", `${target.display_name} is disabled.`);
     if (!ctx.services.dispatchRun) throw new ToolError("unavailable", "Dispatch is not available in this environment.");
-    const handle = await ctx.services.dispatchRun({ agentId: a.agent_id, goal: a.goal });
+    const handle = await ctx.services.dispatchRun({ agentId: a.agent_id, goal: a.goal, parentRunId: ctx.runId ?? null });
     await emit(ctx.repo, {
       division_id: target.division_id,
       agent_id: ctx.agent.id,

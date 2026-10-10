@@ -7,7 +7,7 @@ This repository is public. It holds code and agent definitions only: no credenti
 | Secret | Where it is stored | Who reads it |
 |---|---|---|
 | Integration credentials (Stripe, email, Gmail, GitHub, CrewAI) | Supabase Vault, one secret per agent and integration (`agent:<agent id>:<integration>`) | The worker, through `agent_secret()`, which only the server-side database role can call |
-| `DATABASE_URL`, `ANTHROPIC_API_KEY` | Trigger.dev project environment variables | The worker |
+| `DATABASE_URL`, `ANTHROPIC_API_KEY`, `ALERTS_RESEND_API_KEY` and the alert address | Trigger.dev project environment variables | The worker |
 | Supabase URL and publishable key | Vercel environment variables | The city, in the browser |
 
 The Supabase publishable key is public by design. Every table has row-level security: a signed-in user reads data only when listed in `owners`, and the browser can change nothing except an approval's decision and note and the pause switch (`supabase/migrations/*_security.sql`). Anonymous visitors can read nothing.

@@ -62,6 +62,8 @@ function approval(division_id: string, extra: Partial<ApprovalRow> = {}): Approv
     expires_at: iso(3_600_000),
     executed_at: null,
     result: null,
+    decided_by: null,
+    notified_at: null,
     ...extra,
   };
 }

@@ -183,6 +183,8 @@ function makeApproval(input: { agent: string; tier: ApprovalRow["tier"]; title: 
     expires_at: new Date(created + 72 * 3_600_000).toISOString(),
     executed_at: null,
     result: null,
+    decided_by: null,
+    notified_at: null,
   };
 }
 
@@ -312,7 +314,7 @@ function initialState() {
     }, minutes(60 * 24 * 4)),
   ];
 
-  const brief: BriefRow = { id: uuid(), created_at: isoAgo(minutes(3)), body_md: DEMO_BRIEF(new Date()), run_id: null };
+  const brief: BriefRow = { id: uuid(), created_at: isoAgo(minutes(3)), body_md: DEMO_BRIEF(new Date()), run_id: null, notified_at: null };
   return { divisions, agents, approvals, events, tasks, drafts, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
 }
 
@@ -410,7 +412,7 @@ function simulateBrief() {
   setAgent("hq.hq-01", { state: "working" });
   emit("hq", "hq.hq-01", "run.started", "Write and publish today's daily brief for Nico");
   later(7_000, () => {
-    const brief: BriefRow = { id: uuid(), created_at: new Date().toISOString(), body_md: DEMO_BRIEF(new Date()), run_id: null };
+    const brief: BriefRow = { id: uuid(), created_at: new Date().toISOString(), body_md: DEMO_BRIEF(new Date()), run_id: null, notified_at: null };
     useCity.getState().setBrief(brief);
     const pending = useCity.getState().approvals.filter((a) => a.status === "pending").length;
     emit("hq", "hq.hq-01", "brief.published", `${pending} approvals waiting; ParlayLab MRR steady`, "success");
