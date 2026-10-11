@@ -142,6 +142,28 @@ importers:
         specifier: ^0.5.8
         version: 0.5.8
 
+  packages/evals:
+    dependencies:
+      '@agent-city/core':
+        specifier: workspace:*
+        version: link:../core
+      '@agent-city/db':
+        specifier: workspace:*
+        version: link:../db
+      '@agent-city/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@agent-city/tools':
+        specifier: workspace:*
+        version: link:../tools
+      '@anthropic-ai/sdk':
+        specifier: ^0.133.0
+        version: 0.133.0(zod@4.6.5)
+    devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
+
   packages/runtime:
     dependencies:
       '@agent-city/core':

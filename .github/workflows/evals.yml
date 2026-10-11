@@ -1,0 +1,58 @@
+name: Evals (live)
+
+# Runs Claude on every eval scenario (packages/evals). It costs money, so it only
+# runs when started by hand from the Actions tab, and it needs the
+# ANTHROPIC_API_KEY repository secret. The offline evals run in CI on every push.
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Only scenarios starting with this id (blank for all), e.g. hq.busy"
+        required: false
+        default: ""
+      trials:
+        description: "Runs per scenario"
+        required: false
+        default: "1"
+      budget:
+        description: "Stop starting runs after this many USD"
+        required: false
+        default: "5"
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    if: github.repository == 'nrodriguez04/AOAgentCity'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run live evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Inputs go through the environment, never straight into the script.
+          SCENARIO: ${{ inputs.scenario }}
+          TRIALS: ${{ inputs.trials }}
+          BUDGET: ${{ inputs.budget }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::Add the ANTHROPIC_API_KEY repository secret to run live evals."
+            exit 1
+          fi
+          args=(--live --trials "$TRIALS" --budget "$BUDGET" --json "$GITHUB_WORKSPACE/eval-report.json")
+          if [ -n "$SCENARIO" ]; then args+=(--scenario "$SCENARIO"); fi
+          pnpm eval "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval-report.json
+          if-no-files-found: ignore

@@ -1,0 +1,25 @@
+{
+  "name": "@agent-city/evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "eval": "tsx scripts/eval.ts",
+    "eval:crew": "tsx scripts/eval-crew.ts"
+  },
+  "dependencies": {
+    "@agent-city/core": "workspace:*",
+    "@agent-city/db": "workspace:*",
+    "@agent-city/runtime": "workspace:*",
+    "@agent-city/tools": "workspace:*",
+    "@anthropic-ai/sdk": "^0.133.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

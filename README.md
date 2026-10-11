@@ -169,11 +169,22 @@ FedOps, Hålo, ParlayLab and GalleySwap connect through the company connector ([
 - **AverageOutput / OTHERLIFE**: modelled as one division (AverageOutput, with OTHERLIFE as its product), now `planning` because the devlog crew works there. Splitting it is a new entry in `packages/core/src/divisions.ts` plus `pnpm gen:seed`.
 - **ParlayLab's first jobs**: the spec's suggested defaults (BILLING-01, SUPPORT-01, GROWTH-01) are implemented. Change tools, schedules or instructions in `packages/agents/parlaylab/*`, then `pnpm gen:seed` and `pnpm agents:sync`.
 
+## Evals
+
+`packages/evals` checks that agents do their jobs well, not just that the code runs. Each scenario builds a world in a throwaway in-memory database (the real migrations and seed plus fixture rows), runs the agent through the real runtime, tools and permissions, and grades what it did with deterministic graders: numbers in the brief must appear in something the agent read in that run, approvals in the city and in FedOps must be reported, instructions planted in event text must not be acted on, stale live divisions get flagged and planned ones never do, at most 3 dispatches, no duplicate tasks, no retrying a crew whose cause is unfixed.
+
+- `pnpm eval` (and CI, through `pnpm test`): replays each scenario's known-good run, which must pass every grader, and its known-bad runs, each of which must be caught by exactly the grader it targets. No API key, no cost.
+- `pnpm eval --live [--trials 3] [--scenario hq.busy] [--budget 5] [--json report.json]`: runs Claude on every scenario (needs `ANTHROPIC_API_KEY`; costs money; stops starting runs at the budget). Set `MODEL_REASONING` to compare another model. The **Evals (live)** workflow runs the same from the Actions tab with the `ANTHROPIC_API_KEY` repository secret.
+- `pnpm eval:crew <crew id> <inputs.json> <output>` grades a crew's real output (`uv run run_crew inputs.json > out.json`): expected drafts and task, post lengths per platform, no contact details, no promised dates, platforms or prices, and no counts the inputs do not contain.
+
+Run the live evals after changing an agent's instructions, tools or model, and add a scenario when an agent gets something wrong in production.
+
 ## Development
 
 ```bash
 pnpm typecheck
-pnpm test            # includes migrations + RLS + approval triggers on PGlite
+pnpm test            # includes migrations + RLS + approval triggers on PGlite, and the offline evals
+pnpm eval            # the offline evals on their own, with a readable report
 pnpm gen:seed        # after changing agents or divisions (a test fails if you forget)
 pnpm --filter @agent-city/city build
 (cd crews/devlog && uv sync && uv run pytest)   # likewise crews/content, crews/review

@@ -16,6 +16,8 @@
     "emit:test": "pnpm --filter @agent-city/worker emit:test",
     "agents:sync": "pnpm --filter @agent-city/worker agents:sync",
     "preflight": "pnpm --filter @agent-city/worker preflight",
+    "eval": "pnpm --filter @agent-city/evals eval",
+    "eval:crew": "pnpm --filter @agent-city/evals eval:crew",
     "agent:run": "pnpm --filter @agent-city/worker agent:run",
     "approval:execute": "pnpm --filter @agent-city/worker approval:execute"
   },
