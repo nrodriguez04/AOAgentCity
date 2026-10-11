@@ -1,4 +1,4 @@
-import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DocumentRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
+import type { AgentRow, AppApprovalRow, ApprovalRow, BriefRow, DivisionRow, DocumentRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
 import { create } from "zustand";
 
 export const EVENT_LIMIT = 200;
@@ -11,6 +11,8 @@ export interface Hydration {
   divisions: DivisionRow[];
   agents: AgentRow[];
   approvals: ApprovalRow[];
+  /** Approvals waiting in connected company apps (FedOps, ...), mirrored read-only: the app decides them. */
+  appApprovals: AppApprovalRow[];
   events: EventRow[];
   tasks: TaskRow[];
   /** Devlogs, posts, reports and plans written by agents and crews, newest first. */
@@ -39,6 +41,7 @@ export interface CityState extends Hydration {
   upsertAgent(row: AgentRow): void;
   upsertApproval(row: ApprovalRow): void;
   removeApproval(id: string): void;
+  upsertAppApproval(row: AppApprovalRow): void;
   pushEvent(row: EventRow): void;
   upsertTask(row: TaskRow): void;
   upsertDraft(row: DraftRow): void;
@@ -82,6 +85,8 @@ const newestFirst = (drafts: DraftRow[]) =>
 const liveDocuments = (docs: DocumentRow[]) =>
   docs.filter((d) => !d.archived).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
 
+const sameAppApproval = (a: AppApprovalRow, b: AppApprovalRow) => a.app === b.app && a.external_id === b.external_id;
+
 function upsertBy<T extends { id: string | number }>(rows: T[], row: T): T[] {
   const index = rows.findIndex((r) => r.id === row.id);
   if (index === -1) return [...rows, row];
@@ -94,6 +99,7 @@ export const useCity = create<CityState>((set, get) => ({
   divisions: [],
   agents: [],
   approvals: [],
+  appApprovals: [],
   events: [],
   tasks: [],
   drafts: [],
@@ -125,6 +131,7 @@ export const useCity = create<CityState>((set, get) => ({
   upsertAgent: (row) => set((s) => ({ agents: upsertBy(s.agents, row) })),
   upsertApproval: (row) => set((s) => ({ approvals: upsertBy(s.approvals, row) })),
   removeApproval: (id) => set((s) => ({ approvals: s.approvals.filter((a) => a.id !== id) })),
+  upsertAppApproval: (row) => set((s) => ({ appApprovals: [...s.appApprovals.filter((a) => !sameAppApproval(a, row)), row] })),
   pushEvent: (row) =>
     set((s) => {
       if (s.events.some((e) => e.id === row.id)) return s;

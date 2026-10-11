@@ -1,4 +1,4 @@
-import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DraftRow, EventRow, SettingsRow, TaskRow, DocumentRow } from "@agent-city/core";
+import type { AgentRow, AppApprovalRow, ApprovalRow, BriefRow, DivisionRow, DraftRow, EventRow, SettingsRow, TaskRow, DocumentRow } from "@agent-city/core";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { DRAFT_LIMIT, EVENT_LIMIT, useCity, type Hydration } from "./store";
 import { supabase } from "./supabase";
@@ -26,14 +26,15 @@ async function must<T>(query: PromiseLike<{ data: T | null; error: { message: st
   return data as T;
 }
 
-/** Current agents, divisions, approvals (pending + recent), last 200 events, open tasks, recent drafts, knowledge documents, latest brief, settings. */
+/** Current agents, divisions, approvals (pending + recent, and those waiting in company apps), last 200 events, open tasks, recent drafts, knowledge documents, latest brief, settings. */
 export async function fetchSnapshot(): Promise<Hydration> {
   const db = supabase();
-  const [divisions, agents, pending, recentApprovals, events, tasks, drafts, documents, briefs, settings] = await Promise.all([
+  const [divisions, agents, pending, recentApprovals, appApprovals, events, tasks, drafts, documents, briefs, settings] = await Promise.all([
     must(db.from("divisions").select("*")),
     must(db.from("agents").select("*")),
     must(db.from("approvals").select("*").in("status", ["pending", "approved", "executing"]).order("created_at", { ascending: false })),
     must(db.from("approvals").select("*").order("created_at", { ascending: false }).limit(30)),
+    must(db.from("app_approvals").select("*").eq("status", "pending").order("requested_at").limit(100)),
     must(db.from("events").select("*").order("id", { ascending: false }).limit(EVENT_LIMIT)),
     must(db.from("tasks").select("*").in("status", ["open", "in_progress", "blocked"]).order("priority")),
     must(db.from("drafts").select("*").order("created_at", { ascending: false }).limit(DRAFT_LIMIT)),
@@ -47,6 +48,7 @@ export async function fetchSnapshot(): Promise<Hydration> {
     divisions: (divisions as Row[]).map(toDivision),
     agents: (agents as Row[]).map(toAgent),
     approvals: [...approvals.values()],
+    appApprovals: appApprovals as AppApprovalRow[],
     events: (events as Row[]).map(toEvent),
     tasks: tasks as TaskRow[],
     drafts: drafts as DraftRow[],
@@ -85,6 +87,9 @@ export function connectRealtime(): () => void {
     .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, (p) => {
       if (p.eventType === "DELETE") useCity.getState().removeApproval(String((p.old as Row).id));
       else useCity.getState().upsertApproval(toApproval(p.new));
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "app_approvals" }, (p) => {
+      if (p.eventType !== "DELETE") useCity.getState().upsertAppApproval(p.new as AppApprovalRow);
     })
     .on("postgres_changes", { event: "*", schema: "public", table: "divisions" }, (p) => {
       if (p.eventType !== "DELETE") useCity.getState().upsertDivision(toDivision(p.new));

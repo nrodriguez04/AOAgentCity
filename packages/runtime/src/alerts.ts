@@ -1,12 +1,23 @@
 import { createHash } from "node:crypto";
-import { CITY_TIMEZONE, formatMinorUnits, type AgentRow, type ApprovalRow, type BriefRow, type DivisionRow, type RunRow } from "@agent-city/core";
+import {
+  APP_RISK_LABELS,
+  CITY_TIMEZONE,
+  formatMinorUnits,
+  type AgentRow,
+  type AppApprovalRow,
+  type ApprovalRow,
+  type BriefRow,
+  type DivisionRow,
+  type RunRow,
+} from "@agent-city/core";
 import type { Repo } from "@agent-city/db";
 
 /**
  * Owner alerts: email Nico what needs him, so approvals reach his phone instead
  * of waiting until he opens the city.
  *
- *   - a digest of newly pending approvals and newly failed runs;
+ *   - a digest of newly pending approvals and newly failed runs, plus approvals
+ *     waiting in a connected company app (decided in that app, linked);
  *   - HQ-01's brief, as soon as it is published.
  *
  * Runs every few minutes (the worker's `owner-alerts` schedule). Items are
@@ -52,8 +63,12 @@ export interface AlertEmail {
   subject: string;
   text: string;
   /** Claimed rows this email covers (released again if it fails). */
-  items: { approvals: string[]; runs: string[]; briefs: string[] };
+  items: { approvals: string[]; runs: string[]; briefs: string[]; appApprovals: AppApprovalKey[] };
 }
+
+type AppApprovalKey = Pick<AppApprovalRow, "app" | "external_id">;
+
+const itemCount = (items: AlertEmail["items"]) => items.approvals.length + items.runs.length + items.briefs.length + items.appApprovals.length;
 
 export interface AlertResult {
   kind: AlertEmail["kind"];
@@ -88,18 +103,19 @@ export async function sendOwnerAlerts(deps: AlertDeps): Promise<AlertsOutcome> {
   const approvals = await deps.repo.claimUnnotifiedApprovals();
   const runs = await deps.repo.claimUnnotifiedFailedRuns(since);
   const briefs = await deps.repo.claimUnnotifiedBriefs(since);
-  if (approvals.length + runs.length + briefs.length === 0) return { status: "nothing_new" };
+  const appApprovals = await deps.repo.claimUnnotifiedAppApprovals();
+  if (approvals.length + runs.length + briefs.length + appApprovals.length === 0) return { status: "nothing_new" };
 
   const [agents, divisions] = await Promise.all([deps.repo.listAgents(), deps.repo.listDivisions()]);
   const names = { agents: new Map(agents.map((a) => [a.id, a])), divisions: new Map(divisions.map((d) => [d.id, d])) };
 
   const emails: AlertEmail[] = [];
-  if (approvals.length || runs.length) emails.push(composeDigest(approvals, runs, names, config.cityUrl));
+  if (approvals.length || runs.length || appApprovals.length) emails.push(composeDigest(approvals, runs, names, config.cityUrl, appApprovals));
   for (const brief of briefs) emails.push(composeBrief(brief, config.cityUrl));
 
   const results: AlertResult[] = [];
   for (const email of emails) {
-    const count = email.items.approvals.length + email.items.runs.length + email.items.briefs.length;
+    const count = itemCount(email.items);
     try {
       const messageId = await sendWithResend(email, config, deps.fetch ?? fetch);
       await deps.repo.recordNotification({ kind: email.kind, subject: email.subject, item_count: count, status: "sent", provider_message_id: messageId, error: null });
@@ -116,7 +132,13 @@ export async function sendOwnerAlerts(deps: AlertDeps): Promise<AlertsOutcome> {
 
 type Names = { agents: Map<string, AgentRow>; divisions: Map<string, DivisionRow> };
 
-export function composeDigest(approvals: ApprovalRow[], runs: RunRow[], names: Names, cityUrl: string | null): AlertEmail {
+export function composeDigest(
+  approvals: ApprovalRow[],
+  runs: RunRow[],
+  names: Names,
+  cityUrl: string | null,
+  appApprovals: AppApprovalRow[] = [],
+): AlertEmail {
   const who = (agentId: string, divisionId?: string) => {
     const agent = names.agents.get(agentId);
     const division = names.divisions.get(divisionId ?? agent?.division_id ?? "");
@@ -134,20 +156,39 @@ export function composeDigest(approvals: ApprovalRow[], runs: RunRow[], names: N
     }
     lines.push("");
   }
+  if (appApprovals.length) {
+    // These live in the app: it decides them, so the link goes there, not to the city.
+    lines.push(`${plural(appApprovals.length, "approval")} waiting in your apps`, "");
+    for (const a of appApprovals) {
+      const app = names.divisions.get(a.division_id)?.name ?? a.app;
+      lines.push(`- ${app}: ${a.title}`);
+      lines.push(`  ${APP_RISK_LABELS[a.risk]}.${a.expires_at ? ` Expires ${clock(a.expires_at)}.` : ""} Decide in ${app}${a.url ? `: ${a.url}` : "."}`);
+    }
+    lines.push("");
+  }
   if (runs.length) {
     lines.push(`${plural(runs.length, "run")} failed`, "");
     for (const r of runs) lines.push(`- ${who(r.agent_id)}, ${clock(r.ended_at ?? r.created_at)}: ${clip(r.error ?? "no error recorded", 240)}`);
     lines.push("");
   }
-  lines.push(cityUrl ? `Decide in Agent City: ${cityUrl}` : "Decide in Agent City.");
+  if (approvals.length || runs.length) {
+    const verb = approvals.length ? "Decide in" : "Open";
+    lines.push(cityUrl ? `${verb} Agent City: ${cityUrl}` : `${verb} Agent City.`);
+  }
   if (approvals.length) lines.push("Nothing is sent, charged or refunded until you approve it. Approvals expire after 72 hours.");
 
-  const parts = [approvals.length ? `${plural(approvals.length, "approval")} waiting` : null, runs.length ? `${plural(runs.length, "run")} failed` : null];
+  const waiting = approvals.length + appApprovals.length;
+  const parts = [waiting ? `${plural(waiting, "approval")} waiting` : null, runs.length ? `${plural(runs.length, "run")} failed` : null];
   return {
     kind: "digest",
     subject: `Agent City: ${parts.filter(Boolean).join(", ")}`,
     text: redactContacts(lines.join("\n")),
-    items: { approvals: approvals.map((a) => a.id), runs: runs.map((r) => r.id), briefs: [] },
+    items: {
+      approvals: approvals.map((a) => a.id),
+      runs: runs.map((r) => r.id),
+      briefs: [],
+      appApprovals: appApprovals.map(({ app, external_id }) => ({ app, external_id })),
+    },
   };
 }
 
@@ -161,7 +202,7 @@ export function composeBrief(brief: BriefRow, cityUrl: string | null): AlertEmai
     kind: "brief",
     subject: clip(`HQ brief, ${day}: ${headline ?? "today's brief"}`, 200),
     text: redactContacts(`${brief.body_md.trim()}\n\n${cityUrl ? `Open Agent City: ${cityUrl}` : "Open Agent City for details."}`),
-    items: { approvals: [], runs: [], briefs: [brief.id] },
+    items: { approvals: [], runs: [], briefs: [brief.id], appApprovals: [] },
   };
 }
 
@@ -177,7 +218,14 @@ export function redactContacts(text: string): string {
 }
 
 async function sendWithResend(email: AlertEmail, config: AlertConfig, fetchFn: typeof fetch): Promise<string | null> {
-  const ids = [...email.items.approvals, ...email.items.runs, ...email.items.briefs].sort().join(",");
+  const ids = [
+    ...email.items.approvals,
+    ...email.items.runs,
+    ...email.items.briefs,
+    ...email.items.appApprovals.map((a) => `${a.app}:${a.external_id}`),
+  ]
+    .sort()
+    .join(",");
   const response = await fetchFn("https://api.resend.com/emails", {
     method: "POST",
     headers: {

@@ -1,4 +1,4 @@
-import { DIVISIONS, type AgentRow, type ApprovalRow, type DivisionRow, type EventRow } from "@agent-city/core";
+import { DIVISIONS, type AgentRow, type AppApprovalRow, type ApprovalRow, type DivisionRow, type EventRow } from "@agent-city/core";
 import { describe, expect, it } from "vitest";
 import { deriveAmbience, deriveVisualState, displayLines, type StoreSnapshot } from "@/lib/visual-state";
 
@@ -78,6 +78,7 @@ function snapshot(overrides: Partial<StoreSnapshot> = {}): StoreSnapshot {
       agent("parlaylab.growth-01", "parlaylab"),
     ],
     approvals: [],
+    appApprovals: [],
     events: [],
     brief: null,
     settings: { agents_paused: false, trigger_api_url: "", updated_at: iso(0) },
@@ -111,6 +112,34 @@ describe("deriveVisualState", () => {
     });
     expect(building(s, "parlaylab").beacon).toEqual({ active: true, count: 2 });
     expect(building(s, "hq").beacon).toEqual({ active: false, count: 0 });
+  });
+
+  it("counts approvals waiting in a company app on that app's beacon", () => {
+    const inApp = (extra: Partial<AppApprovalRow>): AppApprovalRow => ({
+      app: "fedops",
+      external_id: `APV-${++eventId}`,
+      division_id: "fedops",
+      title: "Bid decision",
+      risk: "external_effect",
+      url: null,
+      status: "pending",
+      requested_at: iso(-60_000),
+      expires_at: null,
+      decided_at: null,
+      updated_at: iso(-60_000),
+      notified_at: null,
+      ...extra,
+    });
+    const s = snapshot({
+      appApprovals: [inApp({}), inApp({ risk: "binding", expires_at: iso(3_600_000) }), inApp({ expires_at: iso(-1) }), inApp({ status: "approved" })],
+    });
+    expect(building(s, "fedops").beacon).toEqual({ active: true, count: 2 });
+    expect(building(s, "parlaylab").beacon).toEqual({ active: false, count: 0 });
+  });
+
+  it("flashes an app's tower when the app reports good news, not for its routine events", () => {
+    expect(building(snapshot({ events: [event("fedops", "fedops.opportunity.qualified", -1_000, "success")] }), "fedops").flashAt).toBe(NOW - 1_000);
+    expect(building(snapshot({ events: [event("fedops", "fedops.opportunity.discovered", -1_000)] }), "fedops").flashAt).toBeNull();
   });
 
   it("turns the crown red after a failure until it is acknowledged", () => {

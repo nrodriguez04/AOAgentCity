@@ -13,6 +13,7 @@ import type {
   TaskStatus,
   ToolCallStatus,
 } from "./enums";
+import type { AppEventType } from "./apps";
 import type { EventType, MetricValue } from "./events";
 import type { BuildingModel } from "./divisions";
 
@@ -95,7 +96,8 @@ export interface EventRow {
   division_id: string;
   agent_id: string | null;
   run_id: string | null;
-  type: EventType;
+  /** Agent City's own event types, or a connected app's namespaced ones (fedops.opportunity.qualified). */
+  type: EventType | AppEventType;
   level: EventLevel;
   summary: string;
   payload: Record<string, unknown>;

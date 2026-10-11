@@ -3,7 +3,10 @@ import {
   divisionDefinition,
   formatCompact,
   formatUsd,
+  isAppEventType,
+  isOpenAppApproval,
   type AgentRow,
+  type AppApprovalRow,
   type ApprovalRow,
   type BriefRow,
   type DivisionRow,
@@ -20,6 +23,8 @@ export interface StoreSnapshot {
   divisions: DivisionRow[];
   agents: AgentRow[];
   approvals: ApprovalRow[];
+  /** Approvals waiting in company apps; they light the app's beacon like the city's own. */
+  appApprovals: AppApprovalRow[];
   /** Recent events, any order. */
   events: EventRow[];
   brief: BriefRow | null;
@@ -110,9 +115,9 @@ export function deriveVisualState(snapshot: StoreSnapshot, now: number = Date.no
     const events = snapshot.events.filter((e) => e.division_id === division.id);
     const ackedAt = ms(snapshot.acks[division.id]);
 
-    const pending = snapshot.approvals.filter(
-      (a) => a.division_id === division.id && a.status === "pending" && ms(a.expires_at) > now,
-    ).length;
+    const pending =
+      snapshot.approvals.filter((a) => a.division_id === division.id && a.status === "pending" && ms(a.expires_at) > now).length +
+      snapshot.appApprovals.filter((a) => a.division_id === division.id && isOpenAppApproval(a, now)).length;
 
     // Red crown: an error-level event newer than the last acknowledgement, or an
     // agent currently in the error state that failed after it.
@@ -120,7 +125,11 @@ export function deriveVisualState(snapshot: StoreSnapshot, now: number = Date.no
     const agentInError = agents.some((a) => a.state === "error" && ms(a.last_checkin_at) > ackedAt);
     const error = (lastError > 0 && lastError > ackedAt) || agentInError;
 
-    const lastSuccess = Math.max(0, ...events.filter((e) => e.type === "run.succeeded").map((e) => ms(e.ts)));
+    // A finished run, or good news from the division's own app (a pursuit qualified, a deploy shipped).
+    const lastSuccess = Math.max(
+      0,
+      ...events.filter((e) => e.type === "run.succeeded" || (e.level === "success" && isAppEventType(e.type))).map((e) => ms(e.ts)),
+    );
     const flashAt = lastSuccess > 0 && now - lastSuccess <= FLASH_WINDOW_MS ? lastSuccess : null;
 
     let searchlightUntil: number | null = null;

@@ -1,11 +1,12 @@
 "use client";
 
-import type { AgentRow, DivisionRow, EventRow } from "@agent-city/core";
+import { isOpenAppApproval, type AgentRow, type DivisionRow, type EventRow } from "@agent-city/core";
 import { useShallow } from "zustand/react/shallow";
 import { relativeTime } from "@/lib/format";
 import { useCity } from "@/lib/store";
 import type { BuildingVisuals } from "@/lib/visual-types";
 import { ActivityFeed } from "./ActivityFeed";
+import { AppApprovalCard } from "./AppApprovalCard";
 import { ApprovalCard } from "./ApprovalCard";
 import { DraftList } from "./DraftList";
 import { KnowledgeList } from "./KnowledgeList";
@@ -37,6 +38,7 @@ export function StatusPill({ status }: { status: DivisionRow["status"] }) {
 export function DivisionView({ division, building, now }: { division: DivisionRow; building: BuildingVisuals | undefined; now: number }) {
   const agents = useCity(useShallow((s) => s.agents.filter((a) => a.division_id === division.id)));
   const approvals = useCity(useShallow((s) => s.approvals.filter((a) => a.division_id === division.id && a.status === "pending")));
+  const appApprovals = useCity(useShallow((s) => s.appApprovals.filter((a) => a.division_id === division.id && isOpenAppApproval(a, now))));
   const allEvents = useCity((s) => s.events);
   const tasks = useCity(useShallow((s) => s.tasks.filter((t) => t.division_id === division.id && ["open", "in_progress", "blocked"].includes(t.status))));
   const acknowledge = useCity((s) => s.acknowledge);
@@ -128,14 +130,17 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
         )}
       </section>
 
-      {approvals.length > 0 ? (
+      {approvals.length + appApprovals.length > 0 ? (
         <section aria-labelledby="div-approvals-h">
           <h3 id="div-approvals-h" className="section-title mono">
-            Waiting on you ({approvals.length})
+            Waiting on you ({approvals.length + appApprovals.length})
           </h3>
           <div className="stack">
             {approvals.map((a) => (
               <ApprovalCard key={a.id} approval={a} now={now} />
+            ))}
+            {appApprovals.map((a) => (
+              <AppApprovalCard key={`${a.app}:${a.external_id}`} approval={a} now={now} />
             ))}
           </div>
         </section>

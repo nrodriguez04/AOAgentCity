@@ -127,6 +127,7 @@ function CityShell({ onSignOut }: { onSignOut?: () => void }) {
       divisions: s.divisions,
       agents: s.agents,
       approvals: s.approvals,
+      appApprovals: s.appApprovals,
       events: s.events,
       brief: s.brief,
       settings: s.settings,

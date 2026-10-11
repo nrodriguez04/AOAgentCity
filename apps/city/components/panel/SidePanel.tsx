@@ -1,5 +1,6 @@
 "use client";
 
+import { isOpenAppApproval } from "@agent-city/core";
 import { useRef, type KeyboardEvent } from "react";
 import { useCity, type PanelTab } from "@/lib/store";
 import type { BuildingVisuals } from "@/lib/visual-types";
@@ -20,7 +21,11 @@ export function SidePanel({ buildings, now }: { buildings: BuildingVisuals[]; no
   const setOpen = useCity((s) => s.setPanelOpen);
   const selectedId = useCity((s) => s.selectedDivisionId);
   const division = useCity((s) => s.divisions.find((d) => d.id === (s.selectedDivisionId ?? "hq")));
-  const pendingCount = useCity((s) => s.approvals.filter((a) => a.status === "pending" && new Date(a.expires_at).getTime() > now).length);
+  const pendingCount = useCity(
+    (s) =>
+      s.approvals.filter((a) => a.status === "pending" && new Date(a.expires_at).getTime() > now).length +
+      s.appApprovals.filter((a) => isOpenAppApproval(a, now)).length,
+  );
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Arrow-key navigation between tabs (WAI-ARIA tabs pattern, automatic activation).

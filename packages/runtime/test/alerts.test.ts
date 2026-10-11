@@ -91,6 +91,33 @@ describe("owner alerts", () => {
     expect(resend.sent[0]!.body.text).toContain("- Devlog crew ran");
   });
 
+  it("emails approvals waiting in a company app, linking to the app that decides them", async () => {
+    await t.db.exec(`
+      insert into divisions (id, name, kind, status) values ('fedops', 'FedOps', 'business', 'planning');
+      insert into app_approvals (app, external_id, division_id, title, risk, url, status, requested_at, expires_at) values
+        ('fedops', 'APV-2026-0004', 'fedops', 'Submit proposal: Janitorial services, VA Dallas', 'binding',
+         'https://fedops.example/approvals/APV-2026-0004', 'pending', now(), '2099-01-01T00:00:00Z'),
+        ('fedops', 'APV-2026-0003', 'fedops', 'Bid decision: already decided', 'external_effect', null, 'approved', now(), null);
+    `);
+    const resend = fakeResend([500, 200]);
+
+    const failed = await sendOwnerAlerts({ repo: t.repo, config: CONFIG, fetch: resend.fetchFn, now: () => NOW });
+    expect(failed).toMatchObject({ status: "done", results: [{ status: "failed", items: 1 }] });
+    const outcome = await sendOwnerAlerts({ repo: t.repo, config: CONFIG, fetch: resend.fetchFn, now: () => NOW });
+    expect(outcome).toMatchObject({ status: "done", results: [{ kind: "digest", items: 1, status: "sent" }] });
+
+    const email = resend.sent[1]!.body;
+    expect(email.subject).toBe("Agent City: 1 approval waiting");
+    expect(email.text).toContain("1 approval waiting in your apps");
+    expect(email.text).toContain("- FedOps: Submit proposal: Janitorial services, VA Dallas");
+    expect(email.text).toContain("Binds the company. Expires");
+    expect(email.text).toContain("Decide in FedOps: https://fedops.example/approvals/APV-2026-0004");
+    // Nothing here is decided in the city, so the email does not send Nico there.
+    expect(email.text).not.toContain("Decide in Agent City");
+    expect(email.text).not.toContain("already decided");
+    expect(await sendOwnerAlerts({ repo: t.repo, config: CONFIG, fetch: resend.fetchFn, now: () => NOW })).toEqual({ status: "nothing_new" });
+  });
+
   it("puts items back when the send fails, and retries them on the next run", async () => {
     const approval = await pendingRefund();
     const resend = fakeResend([500, 200]);

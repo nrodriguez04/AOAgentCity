@@ -6,17 +6,20 @@ This repository is public. It holds code and agent definitions only: no credenti
 
 | Secret | Where it is stored | Who reads it |
 |---|---|---|
-| Integration credentials (Stripe, email, Gmail, GitHub, CrewAI) | Supabase Vault, one secret per agent and integration (`agent:<agent id>:<integration>`) | The worker, through `agent_secret()`, which only the server-side database role can call |
+| Integration credentials (Stripe, email, Gmail, GitHub, CrewAI, company app tokens) | Supabase Vault, one secret per agent and integration (`agent:<agent id>:<integration>`) | The worker, through `agent_secret()`, which only the server-side database role can call |
+| Company apps' event signing secrets | Supabase Vault (`app:<app>:events`) and the app's own environment | Only `ingest_app_event()`, inside the database |
 | `DATABASE_URL`, `ANTHROPIC_API_KEY`, `ALERTS_RESEND_API_KEY` and the alert address | Trigger.dev project environment variables | The worker |
 | Supabase URL and publishable key | Vercel environment variables | The city, in the browser |
 
 The Supabase publishable key is public by design. Every table has row-level security: a signed-in user reads data only when listed in `owners`, and the browser can change nothing except an approval's decision and note, a draft's review (status, title, text and published link; the database keeps the agent's original text and who reviewed it), knowledge documents (create, edit and archive, never delete; every edit keeps the previous version) and the pause switch (`supabase/migrations/*_security.sql`, `*_draft_review.sql`, `*_knowledge.sql`). Anonymous visitors can read nothing.
 
+Company apps post events to the `app-events` Edge Function (docs/CONNECTOR.md). It has no Supabase login of its own; every request must carry an HMAC-SHA256 signature made with that app's secret, a timestamp within five minutes and an event id not seen before. The database checks the signature (the secret never leaves Vault), accepts only event types in the app's own namespace, and stores nothing from a rejected request. Only the service role can call the function behind it, so the public key cannot reach it. Mirrored app approvals are read-only in the city: the app decides them, and their links must be `https://`.
+
 `.env` files are git-ignored; only `.env.example`, with empty values, is committed.
 
 ## Personal data
 
-Agents read customer data (for example a support email) at run time through the gateway. What they store goes to the database, never to this repository. Test fixtures use reserved domains such as `example.com` and `.test`.
+Agents read customer data (for example a support email) at run time through the gateway. What they store goes to the database, never to this repository. Company apps send ids and links in their events, not people's names or contact details. Test fixtures use reserved domains such as `example.com` and `.test`.
 
 ## Dependencies
 

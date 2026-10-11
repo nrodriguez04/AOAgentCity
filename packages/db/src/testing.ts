@@ -5,6 +5,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite, type Transaction } from "@electric-sql/pglite";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { Repo } from "./repo";
 import type { SqlClient } from "./sql";
 
@@ -39,6 +40,10 @@ const SUPABASE_STUBS = `
   $$;
 
   create publication supabase_realtime;
+
+  -- Supabase keeps extensions (pgcrypto, pg_net, ...) in their own schema.
+  create schema extensions;
+  grant usage on schema extensions to anon, authenticated, service_role;
 `;
 
 function wrapPglite(db: PGlite | Transaction): SqlClient {
@@ -85,7 +90,7 @@ export interface TestDatabase {
 const templates = new Map<string, Promise<PGlite>>();
 
 async function buildTemplate(seed: boolean): Promise<PGlite> {
-  const db = new PGlite();
+  const db = new PGlite({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_STUBS);
   for (const file of migrationFiles()) {
     try {

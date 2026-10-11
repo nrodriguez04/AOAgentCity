@@ -990,6 +990,23 @@
     color: var(--accent-external);
   }
 
+  /* Highest stakes: legal or contractual liability (FedOps RED). */
+  .tier-badge[data-tier="binding"] {
+    background: color-mix(in oklab, var(--accent-error) 22%, transparent);
+    color: var(--accent-error);
+  }
+
+  .app-approval[data-status="pending"] {
+    border-inline-start-style: dashed;
+  }
+
+  .app-approval-decide {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+  }
+
   .approval-title {
     font-size: 14px;
     font-weight: 600;

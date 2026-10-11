@@ -1,3 +1,4 @@
+import { APP_IDS } from "@agent-city/core";
 import type { Repo } from "@agent-city/db";
 import { getTool, resolveSecret } from "@agent-city/tools";
 import { alertConfigFromEnv } from "./alerts";
@@ -33,6 +34,8 @@ const SECRET_SHAPES: Record<string, string> = {
   gmail: '{"provider":"gmail","client_id":"...","client_secret":"...","refresh_token":"..."}',
   github: "github_pat_... (fine-grained, read-only Contents)",
   crewai: '{"url":"https://<deployment>.crewai.com","token":"..."}',
+  // Company apps' agent APIs (docs/CONNECTOR.md): one token per agent per app.
+  ...Object.fromEntries(APP_IDS.map((app) => [app, `{"base_url":"https://<${app} host>/api/agent/v1","token":"..."}`])),
 };
 
 export interface PreflightOptions {

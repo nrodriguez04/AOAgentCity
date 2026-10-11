@@ -1,10 +1,10 @@
 "use client";
 
-import type { EventRow } from "@agent-city/core";
+import { isAppEventType, type EventRow, type EventType } from "@agent-city/core";
 import { relativeTime } from "@/lib/format";
 import { useCity } from "@/lib/store";
 
-const TYPE_LABEL: Record<EventRow["type"], string> = {
+const TYPE_LABEL: Record<EventType, string> = {
   "run.started": "run",
   "run.progress": "progress",
   "run.succeeded": "done",
@@ -18,6 +18,9 @@ const TYPE_LABEL: Record<EventRow["type"], string> = {
   "brief.published": "brief",
 };
 
+/** An app's own events (fedops.opportunity.qualified) show their verb: "qualified". */
+const typeLabel = (type: EventRow["type"]) => (isAppEventType(type) ? type.slice(type.lastIndexOf(".") + 1) : TYPE_LABEL[type]);
+
 export function ActivityFeed({ events, now, showDivision }: { events: EventRow[]; now: number; showDivision?: boolean }) {
   const agents = useCity((s) => s.agents);
   const divisions = useCity((s) => s.divisions);
@@ -29,7 +32,9 @@ export function ActivityFeed({ events, now, showDivision }: { events: EventRow[]
         const division = divisions.find((d) => d.id === e.division_id);
         return (
           <li key={e.id} className="feed-item" data-level={e.level}>
-            <span className="feed-type mono">{TYPE_LABEL[e.type]}</span>
+            <span className="feed-type mono" title={isAppEventType(e.type) ? e.type : undefined}>
+              {typeLabel(e.type)}
+            </span>
             <span className="feed-body">
               <span className="feed-summary">{e.summary}</span>
               <span className="feed-meta muted mono">

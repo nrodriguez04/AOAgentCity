@@ -2,12 +2,12 @@ import {
   DIVISIONS,
   formatMinorUnits,
   type AgentRow,
+  type AppApprovalRow,
   type ApprovalRow,
   type BriefRow,
   type DivisionRow,
   type DraftRow,
   type EventRow,
-  type EventType,
   type MetricValue,
   type TaskRow, type DraftReview, type DocumentEdit, type DocumentInput, type DocumentRow } from "@agent-city/core";
 import { useCity } from "./store";
@@ -134,6 +134,7 @@ const DEMO_BRIEF = (when: Date) => `# Daily brief: ${when.toLocaleDateString("en
 ## Needs you
 - **Refund $19.00 to sam@example.com**: duplicate charge on the Pro renewal (BILLING-01). Financial, waiting 2 h.
 - **Dunning email to jordan@example.com**: second failed attempt, Stripe retries in 3 days.
+- **FedOps:** bid decision on the VA janitorial notice is waiting in FedOps (decide it there).
 - **Decide:** is AverageOutput the parent brand with OTHERLIFE as a product, or two divisions?
 
 ## What moved
@@ -157,7 +158,7 @@ const isoAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
 const pick = <T,>(items: readonly T[]) => items[Math.floor(Math.random() * items.length)]!;
 const minutes = (n: number) => n * 60_000;
 
-function makeEvent(division_id: string, agent_id: string | null, type: EventType, summary: string, level: Level = "info", agoMs = 0, payload: Record<string, unknown> = {}): EventRow {
+function makeEvent(division_id: string, agent_id: string | null, type: EventRow["type"], summary: string, level: Level = "info", agoMs = 0, payload: Record<string, unknown> = {}): EventRow {
   return { id: nextEventId++, ts: isoAgo(agoMs), division_id, agent_id, run_id: null, type, level, summary, payload };
 }
 
@@ -252,7 +253,28 @@ function initialState() {
     }),
   ];
 
+  // What a connected FedOps sends: its own events, and the approval it is waiting on (decided in FedOps).
+  const appApprovals: AppApprovalRow[] = [
+    {
+      app: "fedops",
+      external_id: "APV-2026-0002",
+      division_id: "fedops",
+      title: "Bid decision: Janitorial services, VA medical center",
+      risk: "external_effect",
+      url: "https://fedops.example/approvals/APV-2026-0002",
+      status: "pending",
+      requested_at: isoAgo(minutes(140)),
+      expires_at: isoAgo(-minutes(60 * 46)),
+      decided_at: null,
+      updated_at: isoAgo(minutes(140)),
+      notified_at: isoAgo(minutes(139)),
+    },
+  ];
+
   const events: EventRow[] = [
+    makeEvent("fedops", null, "fedops.opportunity.discovered", "SAM.gov: 9 new notices in your NAICS codes", "info", minutes(190), { app: "fedops" }),
+    makeEvent("fedops", null, "fedops.opportunity.qualified", "Janitorial services, VA medical center: fit 82, eligible", "success", minutes(150), { app: "fedops" }),
+    makeEvent("fedops", null, "fedops.approval.requested", appApprovals[0]!.title, "warning", minutes(140), { app: "fedops", approval: "APV-2026-0002" }),
     makeEvent("parlaylab", "parlaylab.growth-01", "run.started", "Refresh subscription metrics and the experiment backlog", "info", minutes(95)),
     makeEvent("parlaylab", "parlaylab.growth-01", "metric.updated", "MRR $4,210 (+3.1% WoW), 182 active", "info", minutes(93)),
     makeEvent("parlaylab", "parlaylab.growth-01", "task.created", "New task: Experiment: annual plan nudge at checkout", "info", minutes(92)),
@@ -338,7 +360,7 @@ function initialState() {
     doc("creatoros", "content-strategy", "Content strategy", "- **Audience:** founders building with AI agents, and OTHERLIFE players.\n- **Pillars:** building in public, lessons from running agents, OTHERLIFE development.\n- **Never:** customer data, revenue Nico has not cleared, betting advice.", ["strategy", "voice"], minutes(60 * 30)),
     doc("averageoutput", "devlog-lessons", "Devlog lessons", "Posts that show a screenshot of the city get about twice the replies. Lead with what a player can see.", ["devlog"], minutes(60 * 50), "averageoutput.devlog-crew", 2),
   ];
-  return { divisions, agents, approvals, events, tasks, drafts, documents, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
+  return { divisions, agents, approvals, appApprovals, events, tasks, drafts, documents, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
 }
 
 // ----------------------------------------------------------------- simulation
@@ -354,7 +376,7 @@ function later(ms: number, fn: () => void) {
   timers.push(id);
 }
 
-function emit(division_id: string, agent_id: string | null, type: EventType, summary: string, level: Level = "info", payload: Record<string, unknown> = {}) {
+function emit(division_id: string, agent_id: string | null, type: EventRow["type"], summary: string, level: Level = "info", payload: Record<string, unknown> = {}) {
   useCity.getState().pushEvent(makeEvent(division_id, agent_id, type, summary, level, 0, payload));
 }
 
@@ -485,6 +507,15 @@ function loop() {
     const candidates = ["parlaylab.billing-01", "parlaylab.support-01", "parlaylab.growth-01"];
     simulateRun(pick(candidates));
     if (Math.random() < 0.12) simulateCrew(pick(CREW_IDS));
+    // FedOps reports in through the company connector, not through an agent.
+    if (Math.random() < 0.08) {
+      const found = 2 + Math.floor(Math.random() * 9);
+      emit("fedops", null, "fedops.opportunity.discovered", `SAM.gov: ${found} new notices in your NAICS codes`, "info", { app: "fedops" });
+      if (Math.random() < 0.4) {
+        const notice = pick(["Grounds maintenance, Army Reserve center: fit 74", "Custodial services, federal courthouse: fit 68", "Snow removal, VA clinic: fit 71"]);
+        later(2_500, () => emit("fedops", null, "fedops.opportunity.qualified", `${notice}, eligible`, "success", { app: "fedops" }));
+      }
+    }
     if (Math.random() < 0.25) {
       const followers = useCity.getState().divisions.find((d) => d.id === "creatoros")?.metrics.followers;
       const gain = Math.round(20 + Math.random() * 90);

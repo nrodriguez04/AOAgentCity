@@ -1,5 +1,6 @@
 import type {
   AgentEvent,
+  AppApprovalRow,
   AgentPermissionRow,
   AgentRow,
   AgentRuntime,
@@ -178,6 +179,23 @@ function mapKnowledgeDocument(r: Raw): DocumentRow {
     created_at: isoNow(r.created_at),
     updated_at: isoNow(r.updated_at),
     updated_by: String(r.updated_by),
+  };
+}
+
+function mapAppApproval(r: Raw): AppApprovalRow {
+  return {
+    app: r.app as AppApprovalRow["app"],
+    external_id: String(r.external_id),
+    division_id: String(r.division_id),
+    title: String(r.title),
+    risk: r.risk as AppApprovalRow["risk"],
+    url: (r.url as string | null) ?? null,
+    status: r.status as AppApprovalRow["status"],
+    requested_at: isoNow(r.requested_at),
+    expires_at: iso(r.expires_at),
+    decided_at: iso(r.decided_at),
+    updated_at: isoNow(r.updated_at),
+    notified_at: iso(r.notified_at),
   };
 }
 
@@ -920,11 +938,50 @@ export class Repo {
     return rows.map(mapBrief).sort((a, b) => a.created_at.localeCompare(b.created_at));
   }
 
+  /** Approvals waiting in company apps (mirrored, decided in the app) that were not emailed yet, oldest first. */
+  async claimUnnotifiedAppApprovals(limit = 50): Promise<AppApprovalRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `update app_approvals set notified_at = now()
+        where (app, external_id) in (select app, external_id from app_approvals
+                                      where notified_at is null and status = 'pending'
+                                        and (expires_at is null or expires_at > now())
+                                      order by requested_at limit $1 for update skip locked)
+        returning *`,
+      [limit],
+    );
+    return rows.map(mapAppApproval).sort((a, b) => a.requested_at.localeCompare(b.requested_at));
+  }
+
   /** Undo claims after a failed send, so the next alert run includes those items again. */
-  async releaseNotificationClaims(ids: { approvals?: string[]; runs?: string[]; briefs?: string[] }): Promise<void> {
+  async releaseNotificationClaims(ids: {
+    approvals?: string[];
+    runs?: string[];
+    briefs?: string[];
+    appApprovals?: Pick<AppApprovalRow, "app" | "external_id">[];
+  }): Promise<void> {
     if (ids.approvals?.length) await this.sql.query(`update approvals set notified_at = null where id = any($1::uuid[])`, [ids.approvals]);
     if (ids.runs?.length) await this.sql.query(`update runs set notified_at = null where id = any($1::uuid[])`, [ids.runs]);
     if (ids.briefs?.length) await this.sql.query(`update briefs set notified_at = null where id = any($1::uuid[])`, [ids.briefs]);
+    if (ids.appApprovals?.length) {
+      await this.sql.query(
+        `update app_approvals a set notified_at = null
+           from jsonb_to_recordset($1::jsonb) as k(app text, external_id text)
+          where a.app = k.app and a.external_id = k.external_id`,
+        [json(ids.appApprovals.map(({ app, external_id }) => ({ app, external_id })))],
+      );
+    }
+  }
+
+  /** Approvals mirrored from company apps; by default only open ones (pending, not expired), oldest first. */
+  async listAppApprovals(opts: { divisionId?: string; includeClosed?: boolean; limit?: number } = {}): Promise<AppApprovalRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `select * from app_approvals
+        where ($1::text is null or division_id = $1)
+          and ($2 or (status = 'pending' and (expires_at is null or expires_at > now())))
+        order by requested_at limit $3`,
+      [opts.divisionId ?? null, opts.includeClosed ?? false, opts.limit ?? 50],
+    );
+    return rows.map(mapAppApproval);
   }
 
   async recordNotification(input: Omit<NotificationRow, "id" | "created_at" | "channel">): Promise<NotificationRow> {

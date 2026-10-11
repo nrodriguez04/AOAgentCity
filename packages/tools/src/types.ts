@@ -1,4 +1,4 @@
-import type { AgentRow, ModelTier, RiskTier } from "@agent-city/core";
+import type { AgentRow, AppId, ModelTier, RiskTier } from "@agent-city/core";
 import type { Repo } from "@agent-city/db";
 import type { z } from "zod";
 
@@ -40,8 +40,8 @@ export interface ToolDefinition<Schema extends z.ZodObject = z.ZodObject> {
   name: string;
   description: string;
   tier: RiskTier;
-  /** Which scoped credential the tool needs: "internal" needs none. */
-  integration: "internal" | "stripe" | "email" | "gmail" | "github";
+  /** Which scoped credential the tool needs: "internal" needs none; an app id means that app's agent API. */
+  integration: "internal" | "stripe" | "email" | "gmail" | "github" | AppId;
   schema: Schema;
   /** One-line, human-readable description of a call. Used as the approval title. */
   describe(args: z.output<Schema>): string;

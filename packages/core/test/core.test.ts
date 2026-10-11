@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  APP_IDS,
+  isAppEventType,
+  isOpenAppApproval,
   parseCrewOutput,
   AgentEvent,
   computeCostUsd,
@@ -77,6 +80,23 @@ describe("cost accounting", () => {
 });
 
 describe("divisions", () => {
+  it("accepts app events only in a connected app's namespace, like the database", () => {
+    for (const ok of ["fedops.opportunity.qualified", "halo.lead.stage.changed", "galleyswap.trip.posted"]) expect(isAppEventType(ok)).toBe(true);
+    for (const bad of ["run.succeeded", "fedops.one", "fedops.Opportunity.qualified", "evil.thing.happened", "fedops.a.b.c.d", "fedops..x"]) {
+      expect(isAppEventType(bad)).toBe(false);
+    }
+    // Every app is also a division, so its events and approvals have a tower to land on.
+    for (const app of APP_IDS) expect(DIVISIONS.some((d) => d.id === app)).toBe(true);
+  });
+
+  it("treats an app approval as open while pending and unexpired", () => {
+    const now = Date.parse("2026-10-11T12:00:00Z");
+    expect(isOpenAppApproval({ status: "pending", expires_at: null }, now)).toBe(true);
+    expect(isOpenAppApproval({ status: "pending", expires_at: "2026-10-11T13:00:00Z" }, now)).toBe(true);
+    expect(isOpenAppApproval({ status: "pending", expires_at: "2026-10-11T11:00:00Z" }, now)).toBe(false);
+    expect(isOpenAppApproval({ status: "approved", expires_at: null }, now)).toBe(false);
+  });
+
   it("defines all nine divisions with unique ids and known building models", () => {
     expect(DIVISIONS).toHaveLength(9);
     expect(new Set(DIVISIONS.map((d) => d.id)).size).toBe(9);

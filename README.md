@@ -115,6 +115,10 @@ Run a crew locally without Agent City: `cd crews/devlog && uv sync && ANTHROPIC_
 
 Each division has a knowledge store: strategy, rules, decisions and lessons, written in the city (division panel -> Knowledge -> New document) and searched by agents during runs with `knowledge.search` and `knowledge.get` (full-text search, best match first). Division agents read only their own division; HQ-01 reads every division and checks your priorities before planning its brief. Agents with `knowledge.save` can keep notes of their own but can never change a document you last edited, and every edit keeps the previous version in `document_versions`.
 
+## Company apps
+
+FedOps, Hålo, ParlayLab and GalleySwap connect through the company connector ([docs/CONNECTOR.md](docs/CONNECTOR.md)). An app posts signed events to the `app-events` Edge Function: they appear in the activity feed and HQ's brief, light the app's tower, and an approval waiting in the app shows under "Waiting in your apps" with a link to decide it there (the app stays the authority; the city never decides it). Agents call an app's agent API through tools declared with `defineServiceTool`, each with its own token in Vault. To connect an app, store its signing secret as `app:<app>:events` in Vault and give the app the same secret.
+
 ## Build plan checks (§12)
 
 | Phase | Done when | How |

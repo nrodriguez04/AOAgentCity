@@ -1,6 +1,7 @@
 import { createTestDatabase, insertFixtures, type TestDatabase } from "@agent-city/db/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  buildContext,
   buildRequest,
   executeApproval,
   runAgent,
@@ -333,6 +334,26 @@ describe("sweep", () => {
     expect(report).toEqual({ expired: 1, executed: { [approved.approval.id]: "executed" }, stuckReported: 0, staleRunsFailed: 1 });
     expect((await t.repo.getApproval(expiring.approval.id))?.status).toBe("expired");
     expect((await t.repo.getRun(lost.id))?.status).toBe("failed");
+  });
+});
+
+describe("run context", () => {
+  it("shows approvals waiting in company apps, to HQ and to the app's own division only", async () => {
+    await t.db.exec(`
+      insert into divisions (id, name, kind, status) values ('fedops', 'FedOps', 'business', 'planning');
+      insert into app_approvals (app, external_id, division_id, title, risk, status, requested_at, expires_at) values
+        ('fedops', 'APV-2026-0004', 'fedops', 'Submit proposal: Janitorial services, VA Dallas', 'binding', 'pending', '2026-10-11T12:00:00Z', null),
+        ('fedops', 'APV-2026-0003', 'fedops', 'Bid decision: closed', 'external_effect', 'approved', '2026-10-10T12:00:00Z', null);
+    `);
+    const now = new Date("2026-10-11T14:00:00Z");
+    const hq = await buildContext(t.repo, (await t.repo.getAgent("hq.hq-01"))!, now, "cron");
+    expect(hq).toContain("<app_approvals");
+    expect(hq).toContain("- fedops: Submit proposal: Janitorial services, VA Dallas (binds the company; fedops id APV-2026-0004, since 2026-10-11T12:00Z)");
+    expect(hq).not.toContain("Bid decision: closed");
+
+    // Another division's agent does not see FedOps' queue, and its prompt keeps its old shape.
+    const billing = await buildContext(t.repo, (await t.repo.getAgent("parlaylab.billing-01"))!, now, "cron");
+    expect(billing).not.toContain("app_approvals");
   });
 });
 
