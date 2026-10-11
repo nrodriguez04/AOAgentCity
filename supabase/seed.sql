@@ -15,14 +15,20 @@ Pre-launch: not deployed; accounts and a Stripe Pro plan are coded but billing i
 - First agents after launch: Data Quality (feed staleness, incidents), then Insights (explain predictions, no stake advice).
 - Predictions come from the statistical engine only; agents never invent odds or numbers.$md$, '{"x":22,"z":-31.5,"buildingModel":"glass-led"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
-insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('halo', 'Halo', 'business', 'planned', 'Planned business. Placeholder building only.', $md$# Halo
-Planned. No agents yet.$md$, '{"x":44,"z":10.5,"buildingModel":"ring-cylinder"}'::jsonb)
+insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('halo', 'Hålo', 'business', 'planned', 'Real estate wholesaling CRM, built but not deployed. Tested underwriting math comes before any agent.', $md$# Hålo
+Internal wholesaling CRM (repo nrodriguez04/halo_production): leads, human-approved SMS and email, ATTOM enrichment, PII encryption. Not deployed.
+- Before any agent: tested ARV, repair and MAO calculators (today GPT writes prices onto deals), consent capture, and scoped service access.
+- No outreach until a lawyer has reviewed wholesaling and TCPA rules.$md$, '{"x":44,"z":10.5,"buildingModel":"ring-cylinder"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
-insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('fedops', 'FedOps', 'business', 'planned', 'Planned business. Placeholder building only.', $md$# FedOps
-Planned. No agents yet.$md$, '{"x":-22,"z":66.5,"buildingModel":"neoclassical"}'::jsonb)
+insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('fedops', 'FedOps', 'business', 'planning', 'Government contracting operating system, built but not deployed. Phase 1 deploys it and connects it to Agent City.', $md$# FedOps
+Internal operating system for a government prime contractor (repo nrodriguez04/fedops). Built, not deployed: SAM.gov discovery, eligibility and fit scoring, solicitation analysis with verbatim citations, compliance rules, pricing with a capital gate, bid decisions as approvals with a two-person rule, accounting.
+- Blockers: deployment (Neon, Railway, Vercel, R2), the real company profile, a second approver for RED actions, an LLM key.
+- FedOps stays the authority for its own approvals; Agent City will mirror its queue and approvals.$md$, '{"x":-22,"z":66.5,"buildingModel":"neoclassical"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
-insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('galleyswap', 'GalleySwap', 'business', 'planned', 'Not yet in the city POC. Placeholder building only.', $md$# GalleySwap
-Planned. No agents yet.$md$, '{"x":-44,"z":31.5,"buildingModel":"warehouse-loft"}'::jsonb)
+insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('galleyswap', 'GalleySwap', 'business', 'planned', 'Trip marketplace for flight attendants, built but never deployed.', $md$# GalleySwap
+Marketplace where American Airlines flight attendants post trips with a cash bounty (repo nrodriguez04/galleyswap): API, admin, iOS and Android apps, Stripe Connect, Descope. Generated in one import; never built or deployed.
+- First agent after a staging deploy: a read-only Dispute Assistant, then Trust & Safety flags.
+- Never automate airline systems; money moves only through its payment rules.$md$, '{"x":-44,"z":31.5,"buildingModel":"warehouse-loft"}'::jsonb)
   on conflict (id) do update set name = excluded.name, kind = excluded.kind, status = excluded.status, summary = excluded.summary, city_slot = excluded.city_slot, context_md = coalesce(divisions.context_md, excluded.context_md);
 insert into divisions (id, name, kind, status, summary, context_md, city_slot) values ('averageoutput', 'AverageOutput', 'business', 'planning', 'Studio brand; OTHERLIFE is its flagship game. The devlog crew turns each week''s work into a devlog.', $md$# AverageOutput
 Average Output Studios builds OTHERLIFE (codename AOWorld), a persistent multiplayer life simulation in Unreal Engine.

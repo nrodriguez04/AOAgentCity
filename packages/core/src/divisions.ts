@@ -62,20 +62,30 @@ export const DIVISIONS: DivisionDefinition[] = [
   },
   {
     id: "halo",
-    name: "Halo",
+    name: "Hålo", // display name; "halo" stays the id in code
     kind: "business",
     status: "planned",
-    summary: "Planned business. Placeholder building only.",
-    contextMd: "# Halo\nPlanned. No agents yet.",
+    summary: "Real estate wholesaling CRM, built but not deployed. Tested underwriting math comes before any agent.",
+    contextMd: [
+      "# Hålo",
+      "Internal wholesaling CRM (repo nrodriguez04/halo_production): leads, human-approved SMS and email, ATTOM enrichment, PII encryption. Not deployed.",
+      "- Before any agent: tested ARV, repair and MAO calculators (today GPT writes prices onto deals), consent capture, and scoped service access.",
+      "- No outreach until a lawyer has reviewed wholesaling and TCPA rules.",
+    ].join("\n"),
     slot: { x: 44, z: 10.5, buildingModel: "ring-cylinder" },
   },
   {
     id: "fedops",
     name: "FedOps",
     kind: "business",
-    status: "planned",
-    summary: "Planned business. Placeholder building only.",
-    contextMd: "# FedOps\nPlanned. No agents yet.",
+    status: "planning",
+    summary: "Government contracting operating system, built but not deployed. Phase 1 deploys it and connects it to Agent City.",
+    contextMd: [
+      "# FedOps",
+      "Internal operating system for a government prime contractor (repo nrodriguez04/fedops). Built, not deployed: SAM.gov discovery, eligibility and fit scoring, solicitation analysis with verbatim citations, compliance rules, pricing with a capital gate, bid decisions as approvals with a two-person rule, accounting.",
+      "- Blockers: deployment (Neon, Railway, Vercel, R2), the real company profile, a second approver for RED actions, an LLM key.",
+      "- FedOps stays the authority for its own approvals; Agent City will mirror its queue and approvals.",
+    ].join("\n"),
     slot: { x: -22, z: 66.5, buildingModel: "neoclassical" },
   },
   {
@@ -83,8 +93,13 @@ export const DIVISIONS: DivisionDefinition[] = [
     name: "GalleySwap",
     kind: "business",
     status: "planned",
-    summary: "Not yet in the city POC. Placeholder building only.",
-    contextMd: "# GalleySwap\nPlanned. No agents yet.",
+    summary: "Trip marketplace for flight attendants, built but never deployed.",
+    contextMd: [
+      "# GalleySwap",
+      "Marketplace where American Airlines flight attendants post trips with a cash bounty (repo nrodriguez04/galleyswap): API, admin, iOS and Android apps, Stripe Connect, Descope. Generated in one import; never built or deployed.",
+      "- First agent after a staging deploy: a read-only Dispute Assistant, then Trust & Safety flags.",
+      "- Never automate airline systems; money moves only through its payment rules.",
+    ].join("\n"),
     slot: { x: -44, z: 31.5, buildingModel: "warehouse-loft" },
   },
   {
