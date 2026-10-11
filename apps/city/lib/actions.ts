@@ -1,9 +1,10 @@
-import { demoDecide, demoSetPaused } from "./demo";
+import type { DraftReview } from "@agent-city/core";
+import { demoDecide, demoReviewDraft, demoSetPaused } from "./demo";
 import { useCity } from "./store";
 import { supabase } from "./supabase";
 
-// The city's only writes (spec §2, §5.3): approval decisions and the pause switch.
-// RLS allows exactly these columns for the owner.
+// The city's only writes (spec §2, §5.3): approval decisions, draft reviews and the
+// pause switch. RLS allows exactly these columns for the owner.
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -31,5 +32,15 @@ export async function setCityPaused(paused: boolean): Promise<ActionResult> {
   const { data, error } = await supabase().from("settings").update({ agents_paused: paused }).eq("id", true).select("agents_paused, trigger_api_url, updated_at");
   if (error) return { ok: false, error: error.message };
   if (data?.[0]) useCity.getState().setSettings(data[0]);
+  return { ok: true };
+}
+
+/** Approve, edit, discard or mark a draft published. Nothing is posted anywhere from here. */
+export async function reviewDraft(draftId: string, review: DraftReview): Promise<ActionResult> {
+  if (isDemo()) return demoReviewDraft(draftId, review);
+  const { data, error } = await supabase().from("drafts").update(review).eq("id", draftId).select("*");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "This draft could not be updated. Are you signed in as the owner?" };
+  useCity.getState().upsertDraft(data[0]);
   return { ok: true };
 }

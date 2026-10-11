@@ -10,7 +10,7 @@ This repository is public. It holds code and agent definitions only: no credenti
 | `DATABASE_URL`, `ANTHROPIC_API_KEY`, `ALERTS_RESEND_API_KEY` and the alert address | Trigger.dev project environment variables | The worker |
 | Supabase URL and publishable key | Vercel environment variables | The city, in the browser |
 
-The Supabase publishable key is public by design. Every table has row-level security: a signed-in user reads data only when listed in `owners`, and the browser can change nothing except an approval's decision and note and the pause switch (`supabase/migrations/*_security.sql`). Anonymous visitors can read nothing.
+The Supabase publishable key is public by design. Every table has row-level security: a signed-in user reads data only when listed in `owners`, and the browser can change nothing except an approval's decision and note, a draft's review (status, title, text and published link; the database keeps the agent's original text and who reviewed it) and the pause switch (`supabase/migrations/*_security.sql`, `*_draft_review.sql`). Anonymous visitors can read nothing.
 
 `.env` files are git-ignored; only `.env.example`, with empty values, is committed.
 

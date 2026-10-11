@@ -389,6 +389,13 @@
     background: rgb(255 255 255 / 0.12);
   }
 
+  a.btn {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+    text-decoration: none;
+  }
+
   .btn:disabled {
     cursor: progress;
     opacity: 0.6;
@@ -789,6 +796,74 @@
     overflow-y: auto;
     padding: 8px 12px 12px;
     border-block-start: 1px solid var(--line);
+  }
+
+  .draft-status {
+    margin-inline-start: 8px;
+    padding: 1px 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    vertical-align: 1px;
+    color: var(--muted);
+  }
+
+  .draft-status[data-status="approved"] {
+    border-color: color-mix(in oklab, var(--accent-success) 60%, transparent);
+    color: var(--accent-success);
+  }
+
+  .draft-status[data-status="published"] {
+    border-color: color-mix(in oklab, var(--accent-working) 60%, transparent);
+    color: var(--accent-working);
+  }
+
+  .draft[data-status="discarded"] .draft-title {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  .draft-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px 10px;
+    border-block-start: 1px solid var(--line);
+  }
+
+  .draft-edit {
+    display: grid;
+    gap: 6px;
+    padding: 8px 12px 0;
+    border-block-start: 1px solid var(--line);
+  }
+
+  .draft-edit .draft-actions {
+    padding-inline: 0;
+    border: 0;
+  }
+
+  /* Grows with its text where field-sizing is supported; a fixed 12-row box elsewhere. */
+  .draft-edit textarea {
+    field-sizing: content;
+    inline-size: 100%;
+    block-size: auto;
+    min-block-size: 8lh;
+    max-block-size: 28lh;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .draft-original > summary {
+    padding: 4px 12px 8px;
+    cursor: pointer;
+  }
+
+  .draft-error {
+    padding: 0 12px 10px;
   }
 
   .crew-badge {

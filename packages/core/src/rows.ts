@@ -226,4 +226,15 @@ export interface DraftRow {
   title: string;
   body_md: string;
   status: DraftStatus;
+  updated_at: string;
+  /** When and by whom (auth.users id) Nico last changed it in the city. */
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  /** The agent's original text, kept the first time Nico edits the body. */
+  original_body_md: string | null;
+  /** Where Nico posted it, once published. */
+  published_url: string | null;
 }
+
+/** What the city may change on a draft (RLS allows exactly these columns for the owner). */
+export type DraftReview = Partial<Pick<DraftRow, "status" | "title" | "body_md" | "published_url">>;

@@ -204,6 +204,11 @@ function mapDocument(r: Raw): DraftRow {
     title: String(r.title),
     body_md: String(r.body_md),
     status: r.status as DraftStatus,
+    updated_at: isoNow(r.updated_at ?? r.created_at),
+    reviewed_at: iso(r.reviewed_at),
+    reviewed_by: (r.reviewed_by as string | null) ?? null,
+    original_body_md: (r.original_body_md as string | null) ?? null,
+    published_url: (r.published_url as string | null) ?? null,
   };
 }
 

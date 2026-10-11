@@ -9,8 +9,7 @@ import {
   type EventRow,
   type EventType,
   type MetricValue,
-  type TaskRow,
-} from "@agent-city/core";
+  type TaskRow, type DraftReview } from "@agent-city/core";
 import { useCity } from "./store";
 
 // Demo mode: a local simulation that drives the same store the realtime feed
@@ -294,6 +293,11 @@ function initialState() {
     agent_id,
     run_id: null,
     status: "draft",
+    updated_at: isoAgo(agoMs),
+    reviewed_at: null,
+    reviewed_by: null,
+    original_body_md: null,
+    published_url: null,
     ...d,
   });
   // What the crews handed back last week, so the drafts lists are not empty on load.
@@ -442,7 +446,8 @@ function simulateCrew(crewId: string) {
   later(1_500 + steps * 6_000, () => {
     if (paused()) return;
     for (const d of script.drafts) {
-      const row: DraftRow = { id: uuid(), created_at: new Date().toISOString(), division_id: division, agent_id: crewId, run_id: null, status: "draft", ...d };
+      const at = new Date().toISOString();
+      const row: DraftRow = { id: uuid(), created_at: at, updated_at: at, division_id: division, agent_id: crewId, run_id: null, status: "draft", reviewed_at: null, reviewed_by: null, original_body_md: null, published_url: null, ...d };
       useCity.getState().upsertDraft(row);
       emit(division, crewId, "run.progress", `Draft ready: ${d.title}`.slice(0, 200), "info", { draft_id: row.id, kind: d.kind, channel: d.channel });
     }
@@ -497,6 +502,22 @@ export function startDemo(): () => void {
 }
 
 // ------------------------------------------------------- demo-side writes
+
+/** Demo stand-in for the drafts update: same rules as the database trigger (keeps the original text). */
+export function demoReviewDraft(draftId: string, review: DraftReview) {
+  const draft = useCity.getState().drafts.find((d) => d.id === draftId);
+  if (!draft) return { ok: false as const, error: "This draft no longer exists." };
+  const now = new Date().toISOString();
+  const bodyChanged = review.body_md !== undefined && review.body_md !== draft.body_md;
+  useCity.getState().upsertDraft({
+    ...draft,
+    ...review,
+    updated_at: now,
+    reviewed_at: now,
+    original_body_md: bodyChanged && draft.original_body_md === null ? draft.body_md : draft.original_body_md,
+  });
+  return { ok: true as const };
+}
 
 export function demoDecide(approvalId: string, decision: "approved" | "rejected", note: string | null) {
   const approval = useCity.getState().approvals.find((a) => a.id === approvalId);

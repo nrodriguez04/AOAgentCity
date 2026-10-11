@@ -202,6 +202,37 @@ describe("row-level security", () => {
     ).rejects.toThrow(/permission denied/);
   });
 
+  it("lets the owner review drafts, keeping the agent's original text", async () => {
+    const draft = await t.repo.createDraft({
+      division_id: "parlaylab",
+      agent_id: "parlaylab.billing-01",
+      run_id: null,
+      kind: "social_post",
+      channel: "x",
+      title: "Launch post",
+      body_md: "Agent wrote this.",
+    });
+
+    // A stranger matches nothing; the owner cannot touch columns outside the review set.
+    expect(await t.asUser(STRANGER, (sql) => sql.query(`update drafts set status = 'approved' where id = $1 returning id`, [draft.id]))).toHaveLength(0);
+    for (const column of ["original_body_md = 'x'", "agent_id = 'hq.hq-01'", "reviewed_by = null"]) {
+      await expect(t.asUser(OWNER, (sql) => sql.query(`update drafts set ${column} where id = $1`, [draft.id]))).rejects.toThrow(/permission denied/);
+    }
+
+    await t.asUser(OWNER, (sql) => sql.query(`update drafts set body_md = 'Nico rewrote this.', title = 'Launch post v2' where id = $1`, [draft.id]));
+    await t.asUser(OWNER, (sql) => sql.query(`update drafts set body_md = 'Second edit.' where id = $1`, [draft.id]));
+    const [edited] = await t.sql.query<Record<string, unknown>>(`select * from drafts where id = $1`, [draft.id]);
+    expect(edited).toMatchObject({ title: "Launch post v2", body_md: "Second edit.", original_body_md: "Agent wrote this.", reviewed_by: OWNER, status: "draft" });
+
+    await t.asUser(OWNER, (sql) => sql.query(`update drafts set status = 'published', published_url = 'https://x.com/nico/status/1' where id = $1`, [draft.id]));
+    const [published] = await t.repo.listDrafts({ agentId: "parlaylab.billing-01" });
+    expect(published).toMatchObject({ status: "published", published_url: "https://x.com/nico/status/1", original_body_md: "Agent wrote this." });
+
+    // Only real links and real statuses.
+    await expect(t.asUser(OWNER, (sql) => sql.query(`update drafts set published_url = 'javascript:alert(1)' where id = $1`, [draft.id]))).rejects.toThrow(/check constraint/);
+    await expect(t.asUser(OWNER, (sql) => sql.query(`update drafts set status = 'sent' where id = $1`, [draft.id]))).rejects.toThrow();
+  });
+
   it("lets the owner pause the city", async () => {
     await t.asUser(OWNER, (sql) => sql.query(`update settings set agents_paused = true where id`));
     expect((await t.repo.getSettings()).agents_paused).toBe(true);

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { demoDecide, demoSetPaused, startDemo } from "@/lib/demo";
+import { demoDecide, demoReviewDraft, demoSetPaused, startDemo } from "@/lib/demo";
 import { useCity } from "@/lib/store";
 import { deriveVisualState } from "@/lib/visual-state";
 
@@ -72,6 +72,19 @@ describe("demo mode", () => {
     expect(state().drafts[0]).toMatchObject({ agent_id: "averageoutput.devlog-crew", status: "draft" });
     const tower = deriveVisualState({ ...state(), acks: {}, selectedDivisionId: null }).find((b) => b.divisionId === "averageoutput")!;
     expect(tower.underConstruction).toBe(false);
+  });
+
+  it("reviews drafts like the database does: edits keep the agent's original text", () => {
+    const draft = state().drafts[0]!;
+    const original = draft.body_md;
+    expect(demoReviewDraft(draft.id, { body_md: "Rewritten by Nico." })).toEqual({ ok: true });
+    expect(demoReviewDraft(draft.id, { body_md: "Rewritten twice." })).toEqual({ ok: true });
+    expect(demoReviewDraft(draft.id, { status: "approved" })).toEqual({ ok: true });
+    expect(state().drafts.find((d) => d.id === draft.id)).toMatchObject({ status: "approved", body_md: "Rewritten twice.", original_body_md: original });
+
+    expect(demoReviewDraft(draft.id, { status: "published", published_url: "https://x.com/nico/status/1" })).toEqual({ ok: true });
+    expect(state().drafts.find((d) => d.id === draft.id)).toMatchObject({ status: "published", published_url: "https://x.com/nico/status/1" });
+    expect(demoReviewDraft("missing", { status: "approved" })).toEqual({ ok: false, error: "This draft no longer exists." });
   });
 
   it("keeps agents busy until paused", () => {
