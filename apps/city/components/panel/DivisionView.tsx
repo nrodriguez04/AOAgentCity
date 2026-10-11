@@ -8,6 +8,7 @@ import type { BuildingVisuals } from "@/lib/visual-types";
 import { ActivityFeed } from "./ActivityFeed";
 import { ApprovalCard } from "./ApprovalCard";
 import { DraftList } from "./DraftList";
+import { KnowledgeList } from "./KnowledgeList";
 
 const STATE_LABEL: Record<AgentRow["state"], string> = {
   idle: "Idle",
@@ -43,6 +44,8 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
   const setPanelTab = useCity((s) => s.setPanelTab);
   // HQ shows the newest drafts from every division.
   const drafts = useCity(useShallow((s) => s.drafts.filter((d) => division.id === "hq" || d.division_id === division.id).slice(0, 8)));
+  // Each division's own documents; HQ's are company-wide (priorities, rules).
+  const documents = useCity(useShallow((s) => s.documents.filter((d) => d.division_id === division.id)));
 
   // HQ sees across the whole city; every other division sees its own feed.
   const events: EventRow[] = (division.id === "hq" ? allEvents : allEvents.filter((e) => e.division_id === division.id)).slice(0, 40);
@@ -163,6 +166,13 @@ export function DivisionView({ division, building, now }: { division: DivisionRo
           <DraftList drafts={drafts} now={now} showDivision={division.id === "hq"} />
         </section>
       ) : null}
+
+      <section aria-labelledby="knowledge-h">
+        <h3 id="knowledge-h" className="section-title mono">
+          Knowledge
+        </h3>
+        <KnowledgeList divisionId={division.id} documents={documents} now={now} />
+      </section>
 
       <section aria-labelledby="activity-h">
         <h3 id="activity-h" className="section-title mono">

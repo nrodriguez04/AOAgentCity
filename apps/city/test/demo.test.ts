@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { demoDecide, demoReviewDraft, demoSetPaused, startDemo } from "@/lib/demo";
+import { slugify } from "@/components/panel/KnowledgeList";
+import { demoCreateDocument, demoDecide, demoEditDocument, demoReviewDraft, demoSetPaused, startDemo } from "@/lib/demo";
 import { useCity } from "@/lib/store";
 import { deriveVisualState } from "@/lib/visual-state";
 
@@ -85,6 +86,28 @@ describe("demo mode", () => {
     expect(demoReviewDraft(draft.id, { status: "published", published_url: "https://x.com/nico/status/1" })).toEqual({ ok: true });
     expect(state().drafts.find((d) => d.id === draft.id)).toMatchObject({ status: "published", published_url: "https://x.com/nico/status/1" });
     expect(demoReviewDraft("missing", { status: "approved" })).toEqual({ ok: false, error: "This draft no longer exists." });
+  });
+
+  it("keeps knowledge documents like the database does: versions on edits, archived ones drop out", () => {
+    expect(state().documents.map((d) => d.slug)).toContain("priorities");
+    expect(demoCreateDocument({ division_id: "fedops", slug: "naics-watchlist", title: "NAICS watchlist", body_md: "561720, 561210", tags: ["discovery"] })).toEqual({ ok: true });
+    expect(demoCreateDocument({ division_id: "fedops", slug: "naics-watchlist", title: "Again", body_md: "x", tags: [] })).toEqual({
+      ok: false,
+      error: 'A document called "naics-watchlist" already exists here.',
+    });
+    const doc = state().documents.find((d) => d.slug === "naics-watchlist")!;
+    expect(doc).toMatchObject({ version: 1, updated_by: "owner" });
+
+    expect(demoEditDocument(doc.id, { body_md: "561720, 561210, 238990" })).toEqual({ ok: true });
+    expect(state().documents.find((d) => d.id === doc.id)).toMatchObject({ version: 2 });
+    expect(demoEditDocument(doc.id, { archived: true })).toEqual({ ok: true });
+    expect(state().documents.some((d) => d.id === doc.id)).toBe(false);
+  });
+
+  it("turns titles into short document ids", () => {
+    expect(slugify("Q4 priorities!")).toBe("q4-priorities");
+    expect(slugify("  Hålo: lead sources & rules ")).toBe("halo-lead-sources-rules");
+    expect(slugify("!!!")).toBe("");
   });
 
   it("keeps agents busy until paused", () => {

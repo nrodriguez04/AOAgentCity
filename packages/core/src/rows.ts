@@ -238,3 +238,25 @@ export interface DraftRow {
 
 /** What the city may change on a draft (RLS allows exactly these columns for the owner). */
 export type DraftReview = Partial<Pick<DraftRow, "status" | "title" | "body_md" | "published_url">>;
+
+/** A knowledge document: strategy, rules, decisions or lessons for one division. */
+export interface DocumentRow {
+  id: string;
+  division_id: string;
+  /** Unique within the division: lowercase letters, digits and hyphens. */
+  slug: string;
+  title: string;
+  body_md: string;
+  tags: string[];
+  archived: boolean;
+  /** Starts at 1; every edit to title, text or tags keeps the old version and adds one. */
+  version: number;
+  created_at: string;
+  updated_at: string;
+  /** "owner" when Nico last edited it in the city, else the agent id that saved it. */
+  updated_by: string;
+}
+
+/** What the city may set on a document (RLS allows exactly these columns for the owner). */
+export type DocumentInput = Pick<DocumentRow, "division_id" | "slug" | "title" | "body_md" | "tags">;
+export type DocumentEdit = Partial<Pick<DocumentRow, "title" | "body_md" | "tags" | "archived">>;

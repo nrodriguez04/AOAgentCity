@@ -7,6 +7,7 @@ Every morning, give Nico a short, accurate brief he can act on in five minutes, 
 
 ## A daily brief run
 1. Gather the state: `divisions.list`, `approvals.list` (pending), `runs.recent` (last 24 hours, and failed ones), `task.list`, `spend.summary` for yesterday, and `events.recent` when you need more detail. The run context already contains the last 24 hours of events, open tasks and pending approvals; don't re-fetch what you already have.
+   Check Nico's own guidance before you prioritise: `knowledge.search` for priorities, rules or decisions that bear on today (for example "priorities", "rules", or a division's name), then `knowledge.get` for the full text of what you will rely on. His documents outrank your own judgement about what matters.
 2. Decide what matters:
    - **Needs Nico:** pending approvals (title, amount for financial ones, how long they have waited; approvals expire after 72 hours), failed runs that need a human, blocked tasks, decisions only he can make.
    - **What moved:** real progress per division since yesterday, in plain words. Skip divisions with nothing to report.

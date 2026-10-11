@@ -9,7 +9,7 @@ import {
   type EventRow,
   type EventType,
   type MetricValue,
-  type TaskRow, type DraftReview } from "@agent-city/core";
+  type TaskRow, type DraftReview, type DocumentEdit, type DocumentInput, type DocumentRow } from "@agent-city/core";
 import { useCity } from "./store";
 
 // Demo mode: a local simulation that drives the same store the realtime feed
@@ -319,7 +319,26 @@ function initialState() {
   ];
 
   const brief: BriefRow = { id: uuid(), created_at: isoAgo(minutes(3)), body_md: DEMO_BRIEF(new Date()), run_id: null, notified_at: null };
-  return { divisions, agents, approvals, events, tasks, drafts, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
+  // Knowledge documents Nico wrote (and one an agent saved), so the Knowledge sections are not empty.
+  const doc = (division_id: string, slug: string, title: string, body_md: string, tags: string[], agoMs: number, updated_by = "owner", version = 1): DocumentRow => ({
+    id: uuid(),
+    division_id,
+    slug,
+    title,
+    body_md,
+    tags,
+    archived: false,
+    version,
+    created_at: isoAgo(agoMs * 3),
+    updated_at: isoAgo(agoMs),
+    updated_by,
+  });
+  const documents: DocumentRow[] = [
+    doc("hq", "priorities", "Q4 priorities", "1. **FedOps first:** deploy it, enter the real company profile, connect it to Agent City.\n2. Keep OTHERLIFE devlogs weekly.\n3. ParlayLab and GalleySwap launch prep before any of their agents.", ["planning"], minutes(60 * 20), "owner", 3),
+    doc("creatoros", "content-strategy", "Content strategy", "- **Audience:** founders building with AI agents, and OTHERLIFE players.\n- **Pillars:** building in public, lessons from running agents, OTHERLIFE development.\n- **Never:** customer data, revenue Nico has not cleared, betting advice.", ["strategy", "voice"], minutes(60 * 30)),
+    doc("averageoutput", "devlog-lessons", "Devlog lessons", "Posts that show a screenshot of the city get about twice the replies. Lead with what a player can see.", ["devlog"], minutes(60 * 50), "averageoutput.devlog-crew", 2),
+  ];
+  return { divisions, agents, approvals, events, tasks, drafts, documents, brief, settings: { agents_paused: false, trigger_api_url: "", updated_at: isoAgo(0) } };
 }
 
 // ----------------------------------------------------------------- simulation
@@ -516,6 +535,29 @@ export function demoReviewDraft(draftId: string, review: DraftReview) {
     reviewed_at: now,
     original_body_md: bodyChanged && draft.original_body_md === null ? draft.body_md : draft.original_body_md,
   });
+  return { ok: true as const };
+}
+
+/** Demo stand-in for inserting a document from the city (version 1, written by the owner). */
+export function demoCreateDocument(input: DocumentInput) {
+  const state = useCity.getState();
+  if (state.documents.some((d) => d.division_id === input.division_id && d.slug === input.slug)) {
+    return { ok: false as const, error: `A document called "${input.slug}" already exists here.` };
+  }
+  const now = new Date().toISOString();
+  state.upsertDocument({ ...input, id: uuid(), archived: false, version: 1, created_at: now, updated_at: now, updated_by: "owner" });
+  return { ok: true as const };
+}
+
+/** Demo stand-in for editing a document: same rules as the database trigger (version bump on content changes). */
+export function demoEditDocument(documentId: string, edit: DocumentEdit) {
+  const doc = useCity.getState().documents.find((d) => d.id === documentId);
+  if (!doc) return { ok: false as const, error: "This document no longer exists." };
+  const contentChanged =
+    (edit.title !== undefined && edit.title !== doc.title) ||
+    (edit.body_md !== undefined && edit.body_md !== doc.body_md) ||
+    (edit.tags !== undefined && edit.tags.join("\u0000") !== doc.tags.join("\u0000"));
+  useCity.getState().upsertDocument({ ...doc, ...edit, version: contentChanged ? doc.version + 1 : doc.version, updated_at: new Date().toISOString(), updated_by: "owner" });
   return { ok: true as const };
 }
 

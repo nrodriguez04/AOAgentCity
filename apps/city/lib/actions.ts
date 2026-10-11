@@ -1,10 +1,10 @@
-import type { DraftReview } from "@agent-city/core";
-import { demoDecide, demoReviewDraft, demoSetPaused } from "./demo";
+import type { DocumentEdit, DocumentInput, DocumentRow, DraftReview } from "@agent-city/core";
+import { demoCreateDocument, demoDecide, demoEditDocument, demoReviewDraft, demoSetPaused } from "./demo";
 import { useCity } from "./store";
 import { supabase } from "./supabase";
 
-// The city's only writes (spec §2, §5.3): approval decisions, draft reviews and the
-// pause switch. RLS allows exactly these columns for the owner.
+// The city's only writes (spec §2, §5.3): approval decisions, draft reviews, knowledge
+// documents and the pause switch. RLS allows exactly these columns for the owner.
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -42,5 +42,26 @@ export async function reviewDraft(draftId: string, review: DraftReview): Promise
   if (error) return { ok: false, error: error.message };
   if (!data || data.length === 0) return { ok: false, error: "This draft could not be updated. Are you signed in as the owner?" };
   useCity.getState().upsertDraft(data[0]);
+  return { ok: true };
+}
+
+const DOCUMENT_COLUMNS = "id, division_id, slug, title, body_md, tags, archived, version, created_at, updated_at, updated_by";
+
+/** Write a new knowledge document. Agents in that division can search it from their next run. */
+export async function createDocument(input: DocumentInput): Promise<ActionResult> {
+  if (isDemo()) return demoCreateDocument(input);
+  const { data, error } = await supabase().from("documents").insert(input).select(DOCUMENT_COLUMNS);
+  if (error) return { ok: false, error: error.code === "23505" ? `A document called "${input.slug}" already exists here.` : error.message };
+  if (data?.[0]) useCity.getState().upsertDocument(data[0] as unknown as DocumentRow);
+  return { ok: true };
+}
+
+/** Edit or archive a document. The database keeps the previous version. */
+export async function editDocument(documentId: string, edit: DocumentEdit): Promise<ActionResult> {
+  if (isDemo()) return demoEditDocument(documentId, edit);
+  const { data, error } = await supabase().from("documents").update(edit).eq("id", documentId).select(DOCUMENT_COLUMNS);
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "This document could not be updated. Are you signed in as the owner?" };
+  useCity.getState().upsertDocument(data[0] as unknown as DocumentRow);
   return { ok: true };
 }

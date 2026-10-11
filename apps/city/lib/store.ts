@@ -1,4 +1,4 @@
-import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
+import type { AgentRow, ApprovalRow, BriefRow, DivisionRow, DocumentRow, DraftRow, EventRow, SettingsRow, TaskRow } from "@agent-city/core";
 import { create } from "zustand";
 
 export const EVENT_LIMIT = 200;
@@ -15,6 +15,8 @@ export interface Hydration {
   tasks: TaskRow[];
   /** Devlogs, posts, reports and plans written by agents and crews, newest first. */
   drafts: DraftRow[];
+  /** Knowledge documents (not archived), most recently updated first. */
+  documents: DocumentRow[];
   brief: BriefRow | null;
   settings: SettingsRow | null;
 }
@@ -40,6 +42,7 @@ export interface CityState extends Hydration {
   pushEvent(row: EventRow): void;
   upsertTask(row: TaskRow): void;
   upsertDraft(row: DraftRow): void;
+  upsertDocument(row: DocumentRow): void;
   setBrief(row: BriefRow): void;
   setSettings(row: SettingsRow): void;
   setConnection(connection: Connection): void;
@@ -75,6 +78,10 @@ function writeLocal(key: string, value: unknown): void {
 const newestFirst = (drafts: DraftRow[]) =>
   [...drafts].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)).slice(0, DRAFT_LIMIT);
 
+/** Live documents, most recently updated first; archived ones drop out. */
+const liveDocuments = (docs: DocumentRow[]) =>
+  docs.filter((d) => !d.archived).sort((a, b) => (a.updated_at < b.updated_at ? 1 : a.updated_at > b.updated_at ? -1 : 0));
+
 function upsertBy<T extends { id: string | number }>(rows: T[], row: T): T[] {
   const index = rows.findIndex((r) => r.id === row.id);
   if (index === -1) return [...rows, row];
@@ -90,6 +97,7 @@ export const useCity = create<CityState>((set, get) => ({
   events: [],
   tasks: [],
   drafts: [],
+  documents: [],
   brief: null,
   settings: null,
   connection: "connecting",
@@ -108,6 +116,7 @@ export const useCity = create<CityState>((set, get) => ({
       ...data,
       events: [...data.events].sort((a, b) => b.id - a.id).slice(0, EVENT_LIMIT),
       drafts: newestFirst(data.drafts),
+      documents: liveDocuments(data.documents),
       hydrated: true,
       acks: readLocal(ACK_KEY, {}),
       lowGraphics: readLocal(LOW_KEY, false),
@@ -123,6 +132,7 @@ export const useCity = create<CityState>((set, get) => ({
     }),
   upsertTask: (row) => set((s) => ({ tasks: upsertBy(s.tasks, row) })),
   upsertDraft: (row) => set((s) => ({ drafts: newestFirst(upsertBy(s.drafts, row)) })),
+  upsertDocument: (row) => set((s) => ({ documents: liveDocuments(upsertBy(s.documents, row)) })),
   setBrief: (row) => set((s) => (s.brief && s.brief.created_at > row.created_at ? s : { brief: row })),
   setSettings: (row) => set({ settings: row }),
   setConnection: (connection) => set({ connection }),

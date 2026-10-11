@@ -866,6 +866,20 @@
     padding: 0 12px 10px;
   }
 
+  .knowledge-add {
+    justify-self: start;
+    margin-block-start: 6px;
+  }
+
+  .knowledge-id {
+    align-self: center;
+    margin-inline-start: auto;
+  }
+
+  .knowledge-new {
+    padding-block-end: 2px;
+  }
+
   .crew-badge {
     margin-inline-start: 8px;
     padding: 1px 6px;

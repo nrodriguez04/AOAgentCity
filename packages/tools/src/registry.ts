@@ -5,6 +5,7 @@ import { GITHUB_TOOLS } from "./integrations/github";
 import { SUPPORT_TOOLS } from "./integrations/gmail";
 import { HQ_TOOLS } from "./integrations/hq";
 import { INTERNAL_TOOLS } from "./integrations/internal";
+import { KNOWLEDGE_TOOLS } from "./integrations/knowledge";
 import { STRIPE_TOOLS } from "./integrations/stripe";
 import { RATIONALE_FIELD } from "./policy";
 import type { ToolDefinition } from "./types";
@@ -13,6 +14,7 @@ import type { ToolDefinition } from "./types";
 // the gateway rejects any name it cannot find (spec §13).
 export const ALL_TOOLS: ToolDefinition[] = [
   ...INTERNAL_TOOLS,
+  ...KNOWLEDGE_TOOLS,
   ...HQ_TOOLS,
   ...STRIPE_TOOLS,
   ...EMAIL_TOOLS,

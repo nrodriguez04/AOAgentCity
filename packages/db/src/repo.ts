@@ -12,6 +12,7 @@ import type {
   DivisionKind,
   DivisionRow,
   DivisionStatus,
+  DocumentRow,
   DraftKind,
   DraftRow,
   DraftStatus,
@@ -161,6 +162,22 @@ function mapBrief(r: Raw): BriefRow {
     body_md: String(r.body_md),
     run_id: (r.run_id as string | null) ?? null,
     notified_at: iso(r.notified_at),
+  };
+}
+
+function mapKnowledgeDocument(r: Raw): DocumentRow {
+  return {
+    id: String(r.id),
+    division_id: String(r.division_id),
+    slug: String(r.slug),
+    title: String(r.title),
+    body_md: String(r.body_md ?? ""),
+    tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
+    archived: Boolean(r.archived),
+    version: num(r.version),
+    created_at: isoNow(r.created_at),
+    updated_at: isoNow(r.updated_at),
+    updated_by: String(r.updated_by),
   };
 }
 
@@ -802,6 +819,63 @@ export class Repo {
   }
 
   // -------------------------------------------------------------- tool calls
+
+  // ------------------------------------------------------------- knowledge
+
+  /**
+   * Full-text search over live documents, best match first, with a highlighted
+   * excerpt. `divisionIds` null searches every division (HQ).
+   */
+  async searchDocuments(input: { query: string; divisionIds: string[] | null; limit?: number }): Promise<(Omit<DocumentRow, "body_md"> & { rank: number; excerpt: string })[]> {
+    const rows = await this.sql.query<Raw>(
+      `select d.id, d.division_id, d.slug, d.title, d.tags, d.archived, d.version, d.created_at, d.updated_at, d.updated_by,
+              ts_rank_cd(d.search, q) as rank,
+              ts_headline('english', d.body_md, q, 'MaxFragments=2, MaxWords=28, MinWords=8, StartSel=**, StopSel=**, FragmentDelimiter= ... ') as excerpt
+         from documents d, websearch_to_tsquery('english', $1) q
+        where not d.archived and d.search @@ q
+          and ($2::text[] is null or d.division_id = any($2::text[]))
+        order by rank desc, d.updated_at desc
+        limit $3::int`,
+      [input.query, input.divisionIds, input.limit ?? 5],
+    );
+    return rows.map((r) => {
+      const { body_md: _body, ...doc } = mapKnowledgeDocument(r);
+      return { ...doc, rank: Number(r.rank ?? 0), excerpt: String(r.excerpt ?? "") };
+    });
+  }
+
+  async getDocument(divisionId: string, slug: string): Promise<DocumentRow | null> {
+    const [row] = await this.sql.query<Raw>(`select * from documents where division_id = $1 and slug = $2`, [divisionId, slug]);
+    return row ? mapKnowledgeDocument(row) : null;
+  }
+
+  async listDocuments(filter: { divisionId?: string; includeArchived?: boolean; limit?: number } = {}): Promise<DocumentRow[]> {
+    const rows = await this.sql.query<Raw>(
+      `select * from documents
+        where ($1::text is null or division_id = $1) and ($2::boolean or not archived)
+        order by updated_at desc limit $3::int`,
+      [filter.divisionId ?? null, filter.includeArchived ?? false, filter.limit ?? 100],
+    );
+    return rows.map(mapKnowledgeDocument);
+  }
+
+  /**
+   * An agent saves a note in its division. It may create a document or update
+   * one it (or another agent) wrote, but never one Nico last edited: then this
+   * returns null and the caller should propose the change another way.
+   */
+  async saveAgentDocument(input: { division_id: string; slug: string; title: string; body_md: string; tags: string[]; agent_id: string }): Promise<DocumentRow | null> {
+    const [row] = await this.sql.query<Raw>(
+      `insert into documents (division_id, slug, title, body_md, tags, updated_by)
+       values ($1, $2, $3, $4, $5::text[], $6)
+       on conflict (division_id, slug) do update
+         set title = excluded.title, body_md = excluded.body_md, tags = excluded.tags, updated_by = excluded.updated_by
+         where documents.updated_by <> 'owner'
+       returning *`,
+      [input.division_id, input.slug, input.title, input.body_md, input.tags, input.agent_id],
+    );
+    return row ? mapKnowledgeDocument(row) : null;
+  }
 
   // ------------------------------------------------------------- owner alerts
   // Each claim marks rows notified in one statement, so two alert runs never

@@ -25,6 +25,8 @@ export default defineAgent({
     "hq.dispatch_run",
     "hq.flag_stale",
     "brief.publish",
+    "knowledge.search", // read: Nico's priorities, rules and decisions, every division
+    "knowledge.get", // read
   ],
   dailyBudgetUsd: 3,
 });

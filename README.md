@@ -111,6 +111,10 @@ Three crews run next to the Claude agents. Agent City gathers each crew's inputs
 
 Run a crew locally without Agent City: `cd crews/devlog && uv sync && ANTHROPIC_API_KEY=... uv run run_crew` (reads `inputs.example.json`). Each crew has offline tests (`uv run pytest`, no API key needed) that CI runs, and `packages/agents` tests check that the TypeScript inputs, the YAML placeholders and the result schema stay in step.
 
+## Knowledge
+
+Each division has a knowledge store: strategy, rules, decisions and lessons, written in the city (division panel -> Knowledge -> New document) and searched by agents during runs with `knowledge.search` and `knowledge.get` (full-text search, best match first). Division agents read only their own division; HQ-01 reads every division and checks your priorities before planning its brief. Agents with `knowledge.save` can keep notes of their own but can never change a document you last edited, and every edit keeps the previous version in `document_versions`.
+
 ## Build plan checks (§12)
 
 | Phase | Done when | How |
